@@ -27,6 +27,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
 import com.example.eternotev2.ui.components.mood.MoodSelector
 import com.example.eternotev2.ui.components.ambient.StarField
 import com.example.eternotev2.ui.components.common.GlowButton
@@ -328,12 +334,70 @@ fun MessageStep(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimingStep(
     selectedDate: Long,
     onDateSelected: (Long) -> Unit,
     accentColor: Color
 ) {
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = selectedDate)
+    val timePickerState = rememberTimePickerState(
+        initialHour = Calendar.getInstance().apply { timeInMillis = selectedDate }.get(Calendar.HOUR_OF_DAY),
+        initialMinute = Calendar.getInstance().apply { timeInMillis = selectedDate }.get(Calendar.MINUTE)
+    )
+
+    if (showDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let {
+                        val calendar = Calendar.getInstance()
+                        calendar.timeInMillis = it
+                        // Keep current time
+                        val oldCal = Calendar.getInstance().apply { timeInMillis = selectedDate }
+                        calendar.set(Calendar.HOUR_OF_DAY, oldCal.get(Calendar.HOUR_OF_DAY))
+                        calendar.set(Calendar.MINUTE, oldCal.get(Calendar.MINUTE))
+                        onDateSelected(calendar.timeInMillis)
+                    }
+                    showDatePicker = false
+                    showTimePicker = true
+                }) { Text("Next") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    if (showTimePicker) {
+        AlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    val calendar = Calendar.getInstance()
+                    calendar.timeInMillis = selectedDate
+                    calendar.set(Calendar.HOUR_OF_DAY, timePickerState.hour)
+                    calendar.set(Calendar.MINUTE, timePickerState.minute)
+                    onDateSelected(calendar.timeInMillis)
+                    showTimePicker = false
+                }) { Text("Confirm") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTimePicker = false }) { Text("Cancel") }
+            },
+            title = { Text("Select Time") },
+            text = {
+                TimePicker(state = timePickerState)
+            }
+        )
+    }
+
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         Text(
             "When should this capsule reveal itself?",
@@ -343,6 +407,7 @@ fun TimingStep(
         )
 
         val presets = listOf(
+            "1 Day" to 1000L * 60 * 60 * 24,
             "1 Week" to 1000L * 60 * 60 * 24 * 7,
             "1 Month" to 1000L * 60 * 60 * 24 * 30,
             "6 Months" to 1000L * 60 * 60 * 24 * 180,
@@ -368,16 +433,15 @@ fun TimingStep(
             }
         }
 
-        // Custom Date Picker Placeholder
-        val dateStr = SimpleDateFormat("MMMM dd, yyyy", Locale.getDefault()).format(Date(selectedDate))
+        val dateStr = SimpleDateFormat("MMM dd, yyyy 'at' hh:mm a", Locale.getDefault()).format(Date(selectedDate))
         OutlinedButton(
-            onClick = { /* In real app, show material date picker */ },
+            onClick = { showDatePicker = true },
             modifier = Modifier.fillMaxWidth(),
             border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
         ) {
             Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Pick Custom Date: $dateStr", color = Color.White)
+            Text("Pick Custom Date & Time: $dateStr", color = Color.White)
         }
     }
 }

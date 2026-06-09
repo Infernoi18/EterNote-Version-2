@@ -36,12 +36,11 @@ fun EternoteBottomBar(
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = 0.1f),
-                        Color.White.copy(alpha = 0.05f)
+                        Color.White.copy(alpha = 0.15f),
+                        Color.White.copy(alpha = 0.08f)
                     )
                 )
-            )
-            .blur(20.dp),
+            ),
         contentAlignment = Alignment.Center
     ) {
         Row(
