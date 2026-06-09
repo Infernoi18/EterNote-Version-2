@@ -29,11 +29,13 @@ data class CreateCapsuleUiState(
     val isCoreMemory: Boolean = false,
     val message: String = "",
     val unlockMessage: String = "",
-    val mood: Mood = Mood.HOPEFUL,
+    val mood: Mood? = null,
+    val showMoodError: Boolean = false,
     val unlockAt: Long = System.currentTimeMillis() + (1000 * 60 * 60 * 24), // 1 day later
     val isSaving: Boolean = false,
     val saveSuccess: Boolean = false,
     val isRecording: Boolean = false,
+    val isPaused: Boolean = false,
     val recordingDuration: Long = 0L,
     val waveform: List<Float> = emptyList(),
     val voiceFile: File? = null
@@ -53,6 +55,12 @@ class CreateCapsuleViewModel @Inject constructor(
 
     fun nextStep() {
         val current = _uiState.value.currentStep
+        
+        if (current == CreateStep.MOOD && _uiState.value.mood == null) {
+            _uiState.update { it.copy(showMoodError = true) }
+            return
+        }
+
         val next = when (current) {
             CreateStep.IDENTITY -> CreateStep.MOOD
             CreateStep.MOOD -> CreateStep.MESSAGE
@@ -60,7 +68,7 @@ class CreateCapsuleViewModel @Inject constructor(
             CreateStep.TIMING -> CreateStep.REVIEW
             CreateStep.REVIEW -> CreateStep.REVIEW
         }
-        _uiState.update { it.copy(currentStep = next) }
+        _uiState.update { it.copy(currentStep = next, showMoodError = false) }
     }
 
     fun previousStep() {
@@ -80,37 +88,49 @@ class CreateCapsuleViewModel @Inject constructor(
     fun onCoreMemoryChanged(isCore: Boolean) = _uiState.update { it.copy(isCoreMemory = isCore) }
     fun onMessageChanged(message: String) = _uiState.update { it.copy(message = message) }
     fun onUnlockMessageChanged(msg: String) = _uiState.update { it.copy(unlockMessage = msg) }
-    fun onMoodChanged(mood: Mood) = _uiState.update { it.copy(mood = mood) }
+    fun onMoodChanged(mood: Mood) = _uiState.update { it.copy(mood = mood, showMoodError = false) }
     fun onUnlockDateChanged(timestamp: Long) = _uiState.update { it.copy(unlockAt = timestamp) }
 
     fun startRecording() {
         val fileName = "voice_${System.currentTimeMillis()}"
         val file = voiceRecorder.startRecording(fileName)
         if (file != null) {
-            _uiState.update { it.copy(isRecording = true, voiceFile = file, waveform = emptyList(), recordingDuration = 0) }
+            _uiState.update { it.copy(isRecording = true, isPaused = false, voiceFile = file, waveform = emptyList(), recordingDuration = 0) }
             startWaveformCollection()
         }
+    }
+
+    fun pauseRecording() {
+        voiceRecorder.pauseRecording()
+        _uiState.update { it.copy(isPaused = true) }
+    }
+
+    fun resumeRecording() {
+        voiceRecorder.resumeRecording()
+        _uiState.update { it.copy(isPaused = false) }
     }
 
     fun stopRecording() {
         voiceRecorder.stopRecording()
         recordingJob?.cancel()
-        _uiState.update { it.copy(isRecording = false) }
+        _uiState.update { it.copy(isRecording = false, isPaused = false) }
     }
 
     private fun startWaveformCollection() {
+        recordingJob?.cancel()
         recordingJob = viewModelScope.launch {
-            val startTime = System.currentTimeMillis()
             while (true) {
                 delay(100)
-                val amplitude = voiceRecorder.getAmplitude()
-                // Normalize amplitude for visualization (0..1)
-                val normalized = (amplitude / 32767f).coerceIn(0f, 1f)
-                _uiState.update { 
-                    it.copy(
-                        waveform = it.waveform + normalized,
-                        recordingDuration = System.currentTimeMillis() - startTime
-                    )
+                if (!_uiState.value.isPaused) {
+                    val amplitude = voiceRecorder.getAmplitude()
+                    // Normalize amplitude for visualization (0..1)
+                    val normalized = (amplitude / 32767f).coerceIn(0f, 1f)
+                    _uiState.update { 
+                        it.copy(
+                            waveform = it.waveform + normalized,
+                            recordingDuration = it.recordingDuration + 100
+                        )
+                    }
                 }
             }
         }
@@ -123,6 +143,7 @@ class CreateCapsuleViewModel @Inject constructor(
 
     fun saveCapsule() {
         val currentState = _uiState.value
+        val mood = currentState.mood ?: return
         if (currentState.title.isBlank()) return
 
         viewModelScope.launch {
@@ -132,7 +153,7 @@ class CreateCapsuleViewModel @Inject constructor(
                 id = 0,
                 title = currentState.title,
                 message = currentState.message,
-                mood = currentState.mood,
+                mood = mood,
                 createdAt = System.currentTimeMillis(),
                 unlockAt = currentState.unlockAt,
                 isUnlocked = false,

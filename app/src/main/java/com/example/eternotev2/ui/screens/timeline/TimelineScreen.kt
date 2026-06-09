@@ -43,6 +43,8 @@ import com.example.eternotev2.ui.theme.TextPrimary
 import com.example.eternotev2.ui.theme.TextSecondary
 import com.example.eternotev2.ui.theme.TextTertiary
 import com.example.eternotev2.ui.theme.moodColors
+import androidx.compose.ui.platform.LocalView
+import com.example.eternotev2.util.HapticUtil
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -53,6 +55,7 @@ fun TimelineScreen(
     viewModel: TimelineViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val view = LocalView.current
 
     Box(modifier = Modifier.fillMaxSize()) {
         AmbientBackground(
@@ -91,7 +94,10 @@ fun TimelineScreen(
                 items(capsules) { capsule ->
                     TimelineCapsuleNode(
                         capsule = capsule,
-                        onClick = { onCapsuleClick(capsule.id) }
+                        onClick = {
+                            HapticUtil.performLongPress(view)
+                            onCapsuleClick(capsule.id)
+                        }
                     )
                 }
             }

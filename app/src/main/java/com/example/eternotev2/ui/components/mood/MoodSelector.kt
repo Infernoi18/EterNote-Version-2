@@ -12,13 +12,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalView
+import com.example.eternotev2.util.HapticUtil
 import com.example.eternotev2.ui.theme.Mood
 
 @Composable
 fun MoodSelector(
-    selectedMood: Mood,
+    selectedMood: Mood?,
     onMoodSelected: (Mood) -> Unit
 ) {
+    val view = LocalView.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -31,7 +34,10 @@ fun MoodSelector(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .clip(RoundedCornerShape(12.dp))
-                    .clickable { onMoodSelected(mood) }
+                    .clickable {
+                        HapticUtil.performVirtualKey(view)
+                        onMoodSelected(mood)
+                    }
                     .background(
                         if (isSelected) Color.White.copy(alpha = 0.2f)
                         else Color.Transparent

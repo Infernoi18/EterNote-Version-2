@@ -53,6 +53,26 @@ class VoiceRecorder @Inject constructor(
         recorder = null
     }
 
+    fun pauseRecording() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            try {
+                recorder?.pause()
+            } catch (e: Exception) {
+                Log.e("VoiceRecorder", "Pause recording failed", e)
+            }
+        }
+    }
+
+    fun resumeRecording() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            try {
+                recorder?.resume()
+            } catch (e: Exception) {
+                Log.e("VoiceRecorder", "Resume recording failed", e)
+            }
+        }
+    }
+
     fun getAmplitude(): Float {
         return recorder?.maxAmplitude?.toFloat() ?: 0f
     }

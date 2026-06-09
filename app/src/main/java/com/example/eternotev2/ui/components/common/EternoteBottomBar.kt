@@ -19,6 +19,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalView
+import com.example.eternotev2.util.HapticUtil
 import com.example.eternotev2.navigation.BottomNavTab
 
 @Composable
@@ -67,6 +69,7 @@ private fun BottomNavItem(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val view = LocalView.current
     val icon = when (tab) {
         BottomNavTab.HOME -> if (isSelected) Icons.Filled.HourglassFull else Icons.Outlined.HourglassEmpty
         BottomNavTab.TIMELINE -> if (isSelected) Icons.Filled.Timeline else Icons.Outlined.Timeline
@@ -79,7 +82,10 @@ private fun BottomNavItem(
         verticalArrangement = Arrangement.Center,
         modifier = Modifier
             .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
+            .clickable {
+                HapticUtil.performVirtualKey(view)
+                onClick()
+            }
             .padding(8.dp)
     ) {
         Icon(

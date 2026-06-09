@@ -28,6 +28,8 @@ import com.example.eternotev2.ui.components.common.GlassCard
 import com.example.eternotev2.ui.components.common.GlowButton
 import com.example.eternotev2.ui.theme.DeepVoid
 import com.example.eternotev2.ui.theme.moodColors
+import androidx.compose.ui.platform.LocalView
+import com.example.eternotev2.util.HapticUtil
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -41,6 +43,8 @@ fun CapsuleDetailScreen(
     viewModel: CapsuleDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val view = LocalView.current
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(capsuleId) {
         viewModel.loadCapsule(capsuleId)
@@ -55,25 +59,62 @@ fun CapsuleDetailScreen(
             val capsule = uiState.capsule!!
             val colors = moodColors(capsule.mood)
 
+            if (showDeleteDialog) {
+                AlertDialog(
+                    onDismissRequest = { showDeleteDialog = false },
+                    title = { Text("Delete Capsule?") },
+                    text = { Text("Are you sure you want to permanently delete this memory? This action cannot be undone.") },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                viewModel.deleteCapsule()
+                                showDeleteDialog = false
+                                onBack()
+                            },
+                            colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)
+                        ) {
+                            Text("Delete")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDeleteDialog = false }) {
+                            Text("Cancel", color = Color.White)
+                        }
+                    },
+                    containerColor = Color(0xFF1A1A1A),
+                    titleContentColor = Color.White,
+                    textContentColor = Color.White.copy(alpha = 0.7f)
+                )
+            }
+
             Scaffold(
                 containerColor = Color.Transparent,
                 topBar = {
                     TopAppBar(
                         title = { Text("Capsule Details", color = Color.White) },
                         navigationIcon = {
-                            IconButton(onClick = onBack) {
+                            IconButton(onClick = {
+                                HapticUtil.performVirtualKey(view)
+                                onBack()
+                            }) {
                                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                             }
                         },
                         actions = {
-                            IconButton(onClick = { viewModel.toggleFavorite() }) {
+                            IconButton(onClick = {
+                                HapticUtil.performConfirm(view)
+                                viewModel.toggleFavorite()
+                            }) {
                                 Icon(
                                     if (capsule.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                                     contentDescription = "Favorite",
                                     tint = if (capsule.isFavorite) Color.Red else Color.White
                                 )
                             }
-                            IconButton(onClick = { /* Handle delete confirmation */ }) {
+                            IconButton(onClick = {
+                                HapticUtil.performLongPress(view)
+                                showDeleteDialog = true
+                            }) {
                                 Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White.copy(alpha = 0.6f))
                             }
                         },
@@ -170,7 +211,10 @@ fun CapsuleDetailScreen(
                     if (capsule.hasVoiceNote) {
                         VoiceNotePreview(
                             isUnlocked = capsule.isUnlocked,
-                            onPlayClick = onVoiceNote,
+                            onPlayClick = {
+                                HapticUtil.performVirtualKey(view)
+                                onVoiceNote()
+                            },
                             accentColor = colors.primary
                         )
                     }
@@ -182,13 +226,19 @@ fun CapsuleDetailScreen(
                         val isUnlockable = System.currentTimeMillis() >= capsule.unlockAt
                         GlowButton(
                             text = if (isUnlockable) "Unlock Now" else "Unlocks in ${capsule.daysUntilUnlock} days",
-                            onClick = onUnlockClick,
+                            onClick = {
+                                HapticUtil.performConfirm(view)
+                                onUnlockClick()
+                            },
                             enabled = isUnlockable,
                             glowColor = colors.primary
                         )
                     } else {
                         OutlinedButton(
-                            onClick = onBack,
+                            onClick = {
+                                HapticUtil.performVirtualKey(view)
+                                onBack()
+                            },
                             modifier = Modifier.fillMaxWidth().height(56.dp),
                             shape = RoundedCornerShape(16.dp),
                             border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))

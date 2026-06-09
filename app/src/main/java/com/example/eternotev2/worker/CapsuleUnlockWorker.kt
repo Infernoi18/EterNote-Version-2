@@ -4,6 +4,11 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.app.NotificationChannel
+import android.media.AudioAttributes
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
 import androidx.core.app.NotificationCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
@@ -49,13 +54,15 @@ class CapsuleUnlockWorker @AssistedInject constructor(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notification = NotificationCompat.Builder(context, "capsule_unlocks")
+        val notification = NotificationCompat.Builder(context, "channel_capsule_unlock")
             .setSmallIcon(com.example.eternotev2.R.drawable.ic_notification)
-            .setContentTitle("A Memory is Ready ✨")
+            .setContentTitle("🔓 Capsule Unlocked!")
             .setContentText("Your capsule '$capsuleTitle' is ready to be opened.")
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
+            .setVibrate(longArrayOf(0, 600, 200, 400, 150, 300, 150, 250))
+            .setLights(0xFF33D6FF.toInt(), 500, 2000)
             .build()
 
         notificationManager.notify(capsuleId.toInt(), notification)

@@ -33,6 +33,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.ui.platform.LocalView
+import com.example.eternotev2.util.HapticUtil
 import com.example.eternotev2.data.model.Capsule
 import com.example.eternotev2.navigation.Routes
 import com.example.eternotev2.ui.components.ambient.AmbientBackground
@@ -52,6 +54,7 @@ fun CoreMemoryScreen(
     viewModel: CoreMemoryViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val view = LocalView.current
 
     Box(modifier = Modifier.fillMaxSize()) {
         AmbientBackground(
@@ -107,7 +110,10 @@ fun CoreMemoryScreen(
                     items(uiState.coreMemories) { capsule ->
                         CoreMemoryCard(
                             capsule = capsule,
-                            onClick = { onCapsuleClick(capsule.id) }
+                            onClick = {
+                                HapticUtil.performLongPress(view)
+                                onCapsuleClick(capsule.id)
+                            }
                         )
                     }
                 }

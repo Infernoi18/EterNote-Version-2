@@ -27,26 +27,32 @@ class CapsuleDetailViewModel @Inject constructor(
 
     fun loadCapsule(id: Long) {
         viewModelScope.launch {
-            repository.getCapsuleById(id).collect { capsule ->
+            combine(
+                repository.getCapsuleById(id),
+                repository.getVoiceNotesForCapsule(id)
+            ) { capsule, voiceNotes ->
                 if (capsule != null) {
-                    repository.getVoiceNotesForCapsule(id).collect { voiceNotes ->
-                        _uiState.update { it.copy(
-                            capsule = capsule,
-                            voiceNotes = voiceNotes,
-                            isLoading = false
-                        ) }
-                    }
+                    _uiState.update { it.copy(
+                        capsule = capsule,
+                        voiceNotes = voiceNotes,
+                        isLoading = false
+                    ) }
                 } else {
                     _uiState.update { it.copy(isLoading = false, error = "Capsule not found") }
                 }
-            }
+            }.collect()
         }
     }
 
     fun toggleFavorite() {
         val capsule = _uiState.value.capsule ?: return
+        val newFavorite = !capsule.isFavorite
         viewModelScope.launch {
-            repository.setFavorite(capsule.id, !capsule.isFavorite)
+            repository.setFavorite(capsule.id, newFavorite)
+            // If favorited, also mark as core memory as requested
+            if (newFavorite) {
+                repository.setCoreMemory(capsule.id, true)
+            }
         }
     }
 

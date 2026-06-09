@@ -24,6 +24,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.ui.platform.LocalView
+import com.example.eternotev2.util.HapticUtil
 import com.example.eternotev2.ui.components.ambient.StarField
 import com.example.eternotev2.ui.components.common.GlowButton
 import com.example.eternotev2.ui.theme.DeepVoid
@@ -37,6 +39,15 @@ fun CapsuleUnlockScreen(
     viewModel: CapsuleUnlockViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val view = LocalView.current
+
+    LaunchedEffect(uiState.currentPhase) {
+        when (uiState.currentPhase) {
+            UnlockPhase.UNSEALING -> HapticUtil.performLongPress(view)
+            UnlockPhase.REVEALING -> HapticUtil.performConfirm(view)
+            else -> {}
+        }
+    }
 
     LaunchedEffect(capsuleId) {
         viewModel.loadCapsule(capsuleId)
@@ -181,6 +192,7 @@ fun ReadingPhaseView(
     accentColor: Color,
     onFinish: () -> Unit
 ) {
+    val view = LocalView.current
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -213,7 +225,10 @@ fun ReadingPhaseView(
         Spacer(modifier = Modifier.height(64.dp))
         GlowButton(
             text = "Keep Memory",
-            onClick = onFinish,
+            onClick = {
+                HapticUtil.performVirtualKey(view)
+                onFinish()
+            },
             glowColor = accentColor
         )
     }

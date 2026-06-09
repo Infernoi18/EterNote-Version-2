@@ -27,6 +27,8 @@ import com.example.eternotev2.ui.components.ambient.*
 import com.example.eternotev2.ui.components.common.*
 import com.example.eternotev2.ui.components.mood.*
 import com.example.eternotev2.ui.theme.*
+import androidx.compose.ui.platform.LocalView
+import com.example.eternotev2.util.HapticUtil
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -44,6 +46,7 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsState()
     val animatedColors = animatedMoodColors(uiState.currentMood)
     val moodColors = moodColors(uiState.currentMood)
+    val view = LocalView.current
 
     Box(
         modifier = Modifier
@@ -62,7 +65,10 @@ fun HomeScreen(
             containerColor = Color.Transparent,
             floatingActionButton = {
                 FloatingActionButton(
-                    onClick = onCreateCapsule,
+                    onClick = {
+                        HapticUtil.performLongPress(view)
+                        onCreateCapsule()
+                    },
                     containerColor = animatedColors.primary,
                     contentColor = Color.White,
                     shape = CircleShape,
@@ -173,6 +179,7 @@ fun CapsuleCard(
     capsule: Capsule,
     onClick: () -> Unit
 ) {
+    val view = LocalView.current
     val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
     
     Box(
@@ -180,7 +187,10 @@ fun CapsuleCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .background(Color.White.copy(alpha = 0.05f))
-            .clickable(onClick = onClick)
+            .clickable {
+                HapticUtil.performLongPress(view)
+                onClick()
+            }
             .border(0.5.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(20.dp))
             .padding(16.dp)
     ) {

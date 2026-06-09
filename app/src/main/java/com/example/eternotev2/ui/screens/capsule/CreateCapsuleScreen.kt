@@ -1,6 +1,9 @@
 package com.example.eternotev2.ui.screens.capsule
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -36,8 +39,11 @@ import androidx.compose.material3.rememberTimePickerState
 import com.example.eternotev2.ui.components.mood.MoodSelector
 import com.example.eternotev2.ui.components.ambient.StarField
 import com.example.eternotev2.ui.components.common.GlowButton
+import androidx.compose.ui.platform.LocalView
+import com.example.eternotev2.util.HapticUtil
 import com.example.eternotev2.ui.theme.DeepVoid
 import com.example.eternotev2.ui.theme.Mood
+import com.example.eternotev2.ui.theme.MoodColors
 import com.example.eternotev2.ui.theme.moodColors
 import java.text.SimpleDateFormat
 import java.util.*
@@ -50,7 +56,15 @@ fun CreateCapsuleScreen(
     viewModel: CreateCapsuleViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val colors = moodColors(uiState.mood)
+    val colors = uiState.mood?.let { moodColors(it) } ?: MoodColors(
+        primary = Color.White,
+        secondary = Color.Gray,
+        tertiary = Color.LightGray,
+        glow = Color.White,
+        surface = Color.DarkGray,
+        gradient = listOf(Color.Black, Color.DarkGray)
+    )
+    val view = LocalView.current
 
     LaunchedEffect(uiState.saveSuccess) {
         if (uiState.saveSuccess) {
@@ -84,10 +98,11 @@ fun CreateCapsuleScreen(
                     onSave = { viewModel.saveCapsule() },
                     isNextEnabled = when (uiState.currentStep) {
                         CreateStep.IDENTITY -> uiState.title.isNotBlank()
+                        CreateStep.MOOD -> uiState.mood != null
                         CreateStep.MESSAGE -> uiState.message.isNotBlank() || uiState.voiceFile != null
                         else -> true
                     },
-                    accentColor = colors.primary
+                    accentColor = uiState.mood?.let { moodColors(it).primary } ?: Color.White
                 )
             }
         ) { padding ->
@@ -125,25 +140,47 @@ fun CreateCapsuleScreen(
                                 isCoreMemory = uiState.isCoreMemory,
                                 onTitleChange = { viewModel.onTitleChanged(it) },
                                 onTagsChange = { viewModel.onTagsChanged(it) },
-                                onCoreMemoryChange = { viewModel.onCoreMemoryChanged(it) },
+                                onCoreMemoryChange = { 
+                                    HapticUtil.performVirtualKey(view)
+                                    viewModel.onCoreMemoryChanged(it) 
+                                },
                                 accentColor = colors.primary
                             )
                             CreateStep.MOOD -> MoodStep(
                                 selectedMood = uiState.mood,
+                                showError = uiState.showMoodError,
                                 onMoodSelected = { viewModel.onMoodChanged(it) }
                             )
                             CreateStep.MESSAGE -> MessageStep(
                                 message = uiState.message,
                                 unlockMessage = uiState.unlockMessage,
                                 isRecording = uiState.isRecording,
+                                isPaused = uiState.isPaused,
                                 waveform = uiState.waveform,
                                 duration = uiState.recordingDuration,
                                 hasRecording = uiState.voiceFile != null,
                                 onMessageChange = { viewModel.onMessageChanged(it) },
                                 onUnlockMessageChange = { viewModel.onUnlockMessageChanged(it) },
-                                onStartRecording = { viewModel.startRecording() },
-                                onStopRecording = { viewModel.stopRecording() },
-                                onDeleteRecording = { viewModel.deleteRecording() },
+                                onStartRecording = { 
+                                    HapticUtil.performVirtualKey(view)
+                                    viewModel.startRecording() 
+                                },
+                                onPauseRecording = {
+                                    HapticUtil.performVirtualKey(view)
+                                    viewModel.pauseRecording()
+                                },
+                                onResumeRecording = {
+                                    HapticUtil.performVirtualKey(view)
+                                    viewModel.resumeRecording()
+                                },
+                                onStopRecording = { 
+                                    HapticUtil.performConfirm(view)
+                                    viewModel.stopRecording() 
+                                },
+                                onDeleteRecording = { 
+                                    HapticUtil.performLongPress(view)
+                                    viewModel.deleteRecording() 
+                                },
                                 accentColor = colors.primary
                             )
                             CreateStep.TIMING -> TimingStep(
@@ -254,9 +291,28 @@ fun IdentityStep(
 
 @Composable
 fun MoodStep(
-    selectedMood: Mood,
+    selectedMood: Mood?,
+    showError: Boolean,
     onMoodSelected: (Mood) -> Unit
 ) {
+    val shakeOffset = remember { Animatable(0f) }
+
+    LaunchedEffect(showError) {
+        if (showError) {
+            repeat(3) {
+                shakeOffset.animateTo(
+                    targetValue = 10f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioHighBouncy, stiffness = Spring.StiffnessMedium)
+                )
+                shakeOffset.animateTo(
+                    targetValue = -10f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioHighBouncy, stiffness = Spring.StiffnessMedium)
+                )
+            }
+            shakeOffset.animateTo(0f)
+        }
+    }
+
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         Text(
             "What is the emotional tone of this memory?",
@@ -269,6 +325,18 @@ fun MoodStep(
             selectedMood = selectedMood,
             onMoodSelected = onMoodSelected
         )
+
+        if (showError) {
+            Text(
+                text = "Please select a mood to continue",
+                color = Color.Red.copy(alpha = 0.8f),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier
+                    .padding(horizontal = 8.dp)
+                    .offset(x = shakeOffset.value.dp)
+            )
+        }
     }
 }
 
@@ -277,12 +345,15 @@ fun MessageStep(
     message: String,
     unlockMessage: String,
     isRecording: Boolean,
+    isPaused: Boolean,
     waveform: List<Float>,
     duration: Long,
     hasRecording: Boolean,
     onMessageChange: (String) -> Unit,
     onUnlockMessageChange: (String) -> Unit,
     onStartRecording: () -> Unit,
+    onPauseRecording: () -> Unit,
+    onResumeRecording: () -> Unit,
     onStopRecording: () -> Unit,
     onDeleteRecording: () -> Unit,
     accentColor: Color
@@ -310,10 +381,13 @@ fun MessageStep(
 
         VoiceRecordingSection(
             isRecording = isRecording,
+            isPaused = isPaused,
             waveform = waveform,
             duration = duration,
             hasRecording = hasRecording,
             onStartRecording = onStartRecording,
+            onPauseRecording = onPauseRecording,
+            onResumeRecording = onResumeRecording,
             onStopRecording = onStopRecording,
             onDeleteRecording = onDeleteRecording,
             accentColor = accentColor
@@ -341,9 +415,30 @@ fun TimingStep(
     onDateSelected: (Long) -> Unit,
     accentColor: Color
 ) {
+    val view = LocalView.current
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
-    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = selectedDate)
+    
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = selectedDate,
+        selectableDates = object : SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                // Return true only for today and future dates in UTC
+                val today = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }.timeInMillis
+                return utcTimeMillis >= today
+            }
+
+            override fun isSelectableYear(year: Int): Boolean {
+                val today = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+                return year >= today.get(Calendar.YEAR)
+            }
+        }
+    )
     val timePickerState = rememberTimePickerState(
         initialHour = Calendar.getInstance().apply { timeInMillis = selectedDate }.get(Calendar.HOUR_OF_DAY),
         initialMinute = Calendar.getInstance().apply { timeInMillis = selectedDate }.get(Calendar.MINUTE)
@@ -425,7 +520,10 @@ fun TimingStep(
                         .clip(RoundedCornerShape(12.dp))
                         .background(if (isSelected) accentColor.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.05f))
                         .border(1.dp, if (isSelected) accentColor else Color.Transparent, RoundedCornerShape(12.dp))
-                        .clickable { onDateSelected(timestamp) }
+                        .clickable { 
+                            HapticUtil.performVirtualKey(view)
+                            onDateSelected(timestamp) 
+                        }
                         .padding(16.dp)
                 ) {
                     Text(label, color = Color.White, fontWeight = FontWeight.Medium)
@@ -435,7 +533,10 @@ fun TimingStep(
 
         val dateStr = SimpleDateFormat("MMM dd, yyyy 'at' hh:mm a", Locale.getDefault()).format(Date(selectedDate))
         OutlinedButton(
-            onClick = { showDatePicker = true },
+            onClick = { 
+                HapticUtil.performVirtualKey(view)
+                showDatePicker = true 
+            },
             modifier = Modifier.fillMaxWidth(),
             border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
         ) {
@@ -460,7 +561,11 @@ fun ReviewStep(
         )
 
         ReviewItem(label = "Title", value = uiState.title)
-        ReviewItem(label = "Mood", value = uiState.mood.name.lowercase().replaceFirstChar { it.uppercase() }, icon = Icons.Default.Face)
+        ReviewItem(
+            label = "Mood",
+            value = uiState.mood?.let { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } } ?: "Not selected",
+            icon = Icons.Default.Face
+        )
         ReviewItem(label = "Message", value = if (uiState.message.isNotBlank()) "Written message included" else "No written message")
         ReviewItem(label = "Voice Note", value = if (uiState.voiceFile != null) "Voice recording attached" else "No voice note")
         ReviewItem(
@@ -504,6 +609,7 @@ fun CreationNavigationBar(
     isNextEnabled: Boolean,
     accentColor: Color
 ) {
+    val view = LocalView.current
     Surface(
         color = Color.Black.copy(alpha = 0.5f),
         modifier = Modifier.fillMaxWidth()
@@ -516,7 +622,10 @@ fun CreationNavigationBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (currentStep != CreateStep.IDENTITY) {
-                TextButton(onClick = onBack) {
+                TextButton(onClick = {
+                    HapticUtil.performVirtualKey(view)
+                    onBack()
+                }) {
                     Text("Back", color = Color.White.copy(alpha = 0.7f))
                 }
             } else {
@@ -526,13 +635,19 @@ fun CreationNavigationBar(
             if (currentStep == CreateStep.REVIEW) {
                 GlowButton(
                     text = "Seal Memory",
-                    onClick = onSave,
+                    onClick = {
+                        HapticUtil.performConfirm(view)
+                        onSave()
+                    },
                     glowColor = accentColor,
                     modifier = Modifier.width(180.dp)
                 )
             } else {
                 Button(
-                    onClick = onNext,
+                    onClick = {
+                        HapticUtil.performVirtualKey(view)
+                        onNext()
+                    },
                     enabled = isNextEnabled,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = accentColor,
@@ -551,10 +666,13 @@ fun CreationNavigationBar(
 @Composable
 fun VoiceRecordingSection(
     isRecording: Boolean,
+    isPaused: Boolean,
     waveform: List<Float>,
     duration: Long,
     hasRecording: Boolean,
     onStartRecording: () -> Unit,
+    onPauseRecording: () -> Unit,
+    onResumeRecording: () -> Unit,
     onStopRecording: () -> Unit,
     onDeleteRecording: () -> Unit,
     accentColor: Color
@@ -574,14 +692,14 @@ fun VoiceRecordingSection(
                     .padding(vertical = 8.dp),
                 contentAlignment = Alignment.Center
             ) {
-                WaveformVisualizer(waveform = waveform, color = accentColor)
+                WaveformVisualizer(waveform = waveform, color = if (isPaused) Color.Gray else accentColor)
             }
             
             val minutes = (duration / 1000) / 60
             val seconds = (duration / 1000) % 60
             Text(
-                text = "%d:%02d".format(minutes, seconds),
-                color = Color.White,
+                text = "%d:%02d".format(minutes, seconds) + if (isPaused) " (Paused)" else "",
+                color = if (isPaused) Color.Gray else Color.White,
                 fontSize = 12.sp
             )
 
@@ -591,6 +709,14 @@ fun VoiceRecordingSection(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (isRecording) {
+                    IconButton(onClick = { if (isPaused) onResumeRecording() else onPauseRecording() }) {
+                        Icon(
+                            if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                            contentDescription = if (isPaused) "Resume" else "Pause",
+                            tint = Color.White
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
                     IconButton(onClick = onStopRecording) {
                         Icon(Icons.Default.Stop, contentDescription = "Stop", tint = Color.Red)
                     }
