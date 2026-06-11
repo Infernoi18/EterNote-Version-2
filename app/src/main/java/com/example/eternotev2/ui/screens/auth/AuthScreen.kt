@@ -1,20 +1,21 @@
 package com.example.eternotev2.ui.screens.auth
 
-import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -96,7 +97,8 @@ fun AuthScreen(
                         value = uiState.email,
                         onValueChange = { viewModel.onEmailChange(it) },
                         label = "Email Address",
-                        icon = Icons.Default.Email
+                        icon = Icons.Default.Email,
+                        keyboardType = KeyboardType.Email
                     )
 
                     AuthTextField(
@@ -104,8 +106,22 @@ fun AuthScreen(
                         onValueChange = { viewModel.onPasswordChange(it) },
                         label = "Password",
                         icon = Icons.Default.Lock,
-                        isPassword = true
+                        isPassword = true,
+                        isPasswordVisible = uiState.isPasswordVisible,
+                        onPasswordToggle = { viewModel.togglePasswordVisibility() }
                     )
+
+                    if (!uiState.isLogin) {
+                        AuthTextField(
+                            value = uiState.confirmPassword,
+                            onValueChange = { viewModel.onConfirmPasswordChange(it) },
+                            label = "Confirm Password",
+                            icon = Icons.Default.LockReset,
+                            isPassword = true,
+                            isPasswordVisible = uiState.isPasswordVisible,
+                            onPasswordToggle = { viewModel.togglePasswordVisibility() }
+                        )
+                    }
 
                     if (uiState.error != null) {
                         Text(
@@ -149,7 +165,10 @@ fun AuthTextField(
     onValueChange: (String) -> Unit,
     label: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
-    isPassword: Boolean = false
+    isPassword: Boolean = false,
+    isPasswordVisible: Boolean = false,
+    onPasswordToggle: (() -> Unit)? = null,
+    keyboardType: KeyboardType = KeyboardType.Text
 ) {
     OutlinedTextField(
         value = value,
@@ -158,7 +177,19 @@ fun AuthTextField(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp)) },
-        visualTransformation = if (isPassword) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
+        trailingIcon = if (isPassword && onPasswordToggle != null) {
+            {
+                IconButton(onClick = onPasswordToggle) {
+                    Icon(
+                        imageVector = if (isPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                        contentDescription = if (isPasswordVisible) "Hide password" else "Show password",
+                        tint = Color.White.copy(alpha = 0.5f)
+                    )
+                }
+            }
+        } else null,
+        visualTransformation = if (isPassword && !isPasswordVisible) PasswordVisualTransformation() else VisualTransformation.None,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         colors = OutlinedTextFieldDefaults.colors(
             focusedTextColor = Color.White,
             unfocusedTextColor = Color.White,

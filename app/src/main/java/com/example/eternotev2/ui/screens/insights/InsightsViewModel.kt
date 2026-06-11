@@ -8,6 +8,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -33,24 +35,22 @@ class InsightsViewModel @Inject constructor(
     }
 
     private fun loadInsights() {
-        viewModelScope.launch {
-            repository.getTotalCount().collect { total ->
-                _uiState.update { it.copy(totalCapsules = total) }
+        repository.getTotalCount()
+            .onEach { total -> _uiState.update { it.copy(totalCapsules = total) } }
+            .launchIn(viewModelScope)
+
+        repository.getUnlockedCount()
+            .onEach { unlocked -> _uiState.update { it.copy(totalUnlocked = unlocked) } }
+            .launchIn(viewModelScope)
+
+        repository.getCoreMemoryCount()
+            .onEach { core -> _uiState.update { it.copy(totalCoreMemories = core) } }
+            .launchIn(viewModelScope)
+
+        repository.getMoodDistribution()
+            .onEach { distribution ->
+                _uiState.update { it.copy(moodDistribution = distribution, isLoading = false) }
             }
-        }
-        viewModelScope.launch {
-            repository.getUnlockedCount().collect { unlocked ->
-                _uiState.update { it.copy(totalUnlocked = unlocked) }
-            }
-        }
-        viewModelScope.launch {
-            repository.getCoreMemoryCount().collect { core ->
-                _uiState.update { it.copy(totalCoreMemories = core) }
-            }
-        }
-        viewModelScope.launch {
-            val distribution = repository.getMoodDistribution()
-            _uiState.update { it.copy(moodDistribution = distribution, isLoading = false) }
-        }
+            .launchIn(viewModelScope)
     }
 }

@@ -21,6 +21,7 @@ import com.example.eternotev2.ui.screens.home.HomeScreen
 import com.example.eternotev2.ui.screens.insights.InsightsScreen
 import com.example.eternotev2.ui.screens.onboarding.OnboardingScreen
 import com.example.eternotev2.ui.screens.settings.SettingsScreen
+import com.example.eternotev2.ui.screens.profile.ProfileScreen
 import com.example.eternotev2.ui.screens.splash.SplashScreen
 import com.example.eternotev2.ui.screens.timeline.TimelineScreen
 import com.example.eternotev2.ui.screens.voice.VoiceNoteScreen
@@ -100,7 +101,20 @@ fun EternoteNavGraph(
                 onNavigateToTimeline   = { navController.navigate(Routes.Timeline.route) },
                 onNavigateToCoreMemory = { navController.navigate(Routes.CoreMemory.route) },
                 onNavigateToInsights   = { navController.navigate(Routes.Insights.route) },
-                onSettingsClick = { navController.navigate(Routes.Settings.route) }
+                onSettingsClick = { navController.navigate(Routes.Settings.route) },
+                onProfileClick = { navController.navigate(Routes.Profile.route) }
+            )
+        }
+
+        // ── Profile ───────────────────────────────────────────────────────────
+        composable(Routes.Profile.route) {
+            ProfileScreen(
+                onBack = { navController.popBackStack() },
+                onLogout = {
+                    navController.navigate(Routes.Auth.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
             )
         }
 

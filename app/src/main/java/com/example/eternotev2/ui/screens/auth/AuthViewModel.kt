@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.eternotev2.data.auth.SessionManager
 import com.example.eternotev2.data.repository.CapsuleRepository
+import com.example.eternotev2.util.NetworkMonitor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,15 +18,19 @@ data class AuthUiState(
     val username: String = "",
     val email: String = "",
     val password: String = "",
+    val confirmPassword: String = "",
+    val isPasswordVisible: Boolean = false,
     val isLoading: Boolean = false,
     val error: String? = null,
-    val isAuthenticated: Boolean = false
+    val isAuthenticated: Boolean = false,
+    val isOnline: Boolean = true
 )
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val capsuleRepository: CapsuleRepository,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    private val networkMonitor: NetworkMonitor
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AuthUiState())
@@ -34,6 +39,12 @@ class AuthViewModel @Inject constructor(
     init {
         if (sessionManager.isLoggedIn()) {
             _uiState.update { it.copy(isAuthenticated = true) }
+        }
+
+        viewModelScope.launch {
+            networkMonitor.isOnline.collect { online ->
+                _uiState.update { it.copy(isOnline = online) }
+            }
         }
     }
 
@@ -44,9 +55,32 @@ class AuthViewModel @Inject constructor(
     fun onUsernameChange(value: String) = _uiState.update { it.copy(username = value) }
     fun onEmailChange(value: String) = _uiState.update { it.copy(email = value) }
     fun onPasswordChange(value: String) = _uiState.update { it.copy(password = value) }
+    fun onConfirmPasswordChange(value: String) = _uiState.update { it.copy(confirmPassword = value) }
+    fun togglePasswordVisibility() = _uiState.update { it.copy(isPasswordVisible = !it.isPasswordVisible) }
 
     fun performAuth() {
         val state = _uiState.value
+        
+        if (!isValidEmail(state.email)) {
+            _uiState.update { it.copy(error = "Please enter a valid email address") }
+            return
+        }
+
+        if (state.password.length < 6) {
+            _uiState.update { it.copy(error = "Password must be at least 6 characters") }
+            return
+        }
+
+        if (!state.isLogin && state.password != state.confirmPassword) {
+            _uiState.update { it.copy(error = "Passwords do not match") }
+            return
+        }
+
+        if (!state.isOnline) {
+            _uiState.update { it.copy(error = "No internet connection. Please check your network.") }
+            return
+        }
+
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             
@@ -54,25 +88,21 @@ class AuthViewModel @Inject constructor(
             kotlinx.coroutines.delay(1000)
 
             if (state.isLogin) {
-                // In a real app, we'd verify with a backend. 
-                // For now, let's just log them in if they provide any email.
-                if (state.email.contains("@")) {
-                    sessionManager.setSession(state.email, true)
-                    _uiState.update { it.copy(isLoading = false, isAuthenticated = true) }
-                } else {
-                    _uiState.update { it.copy(isLoading = false, error = "Invalid email") }
-                }
+                // In a real app, we'd verify with a backend and get the username. 
+                // For now, let's just log them in.
+                sessionManager.setSession(state.email, state.username.ifBlank { null }, true)
+                _uiState.update { it.copy(isLoading = false, isAuthenticated = true) }
             } else {
                 // Register
-                if (state.email.isNotBlank() && state.password.length >= 6) {
-                    capsuleRepository.migrateGuestData(state.email)
-                    sessionManager.setSession(state.email, true)
-                    _uiState.update { it.copy(isLoading = false, isAuthenticated = true) }
-                } else {
-                    _uiState.update { it.copy(isLoading = false, error = "Invalid input or password too short") }
-                }
+                capsuleRepository.migrateGuestData(state.email)
+                sessionManager.setSession(state.email, state.username, true)
+                _uiState.update { it.copy(isLoading = false, isAuthenticated = true) }
             }
         }
+    }
+
+    private fun isValidEmail(email: String): Boolean {
+        return android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
     }
 
     fun logout() {

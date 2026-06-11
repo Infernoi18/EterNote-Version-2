@@ -4,14 +4,15 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material3.*
@@ -19,18 +20,20 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.eternotev2.data.model.Capsule
-import com.example.eternotev2.ui.components.ambient.*
-import com.example.eternotev2.ui.components.common.*
-import com.example.eternotev2.ui.components.mood.*
+import com.example.eternotev2.ui.components.ambient.GlowOrb
+import com.example.eternotev2.ui.components.ambient.ParticleField
+import com.example.eternotev2.ui.components.ambient.StarField
+import com.example.eternotev2.ui.components.common.GlassCard
+import com.example.eternotev2.ui.components.common.GlassTag
+import com.example.eternotev2.ui.components.mood.MoodSelector
 import com.example.eternotev2.ui.theme.*
-import androidx.compose.ui.platform.LocalView
 import com.example.eternotev2.util.HapticUtil
 import java.text.SimpleDateFormat
 import java.util.*
@@ -44,6 +47,7 @@ fun HomeScreen(
     onNavigateToCoreMemory: () -> Unit,
     onNavigateToInsights: () -> Unit,
     onSettingsClick: () -> Unit,
+    onProfileClick: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -93,7 +97,8 @@ fun HomeScreen(
                     HomeHeroSection(
                         userName = uiState.userName,
                         mood = uiState.currentMood,
-                        colors = animatedColors
+                        colors = animatedColors,
+                        onProfileClick = onProfileClick
                     )
                 }
 
@@ -227,24 +232,46 @@ fun HomeScreen(
 fun HomeHeroSection(
     userName: String,
     mood: Mood,
-    colors: AnimatedMoodColors
+    colors: AnimatedMoodColors,
+    onProfileClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 24.dp)
     ) {
-        Text(
-            text = "Welcome back,",
-            color = Color.White.copy(alpha = 0.7f),
-            fontSize = 16.sp
-        )
-        Text(
-            text = userName,
-            color = Color.White,
-            fontSize = 32.sp,
-            fontWeight = FontWeight.Bold
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
+        ) {
+            Column {
+                Text(
+                    text = "Welcome back,",
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontSize = 16.sp
+                )
+                Text(
+                    text = userName,
+                    color = Color.White,
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            IconButton(
+                onClick = onProfileClick,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.1f))
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AccountCircle,
+                    contentDescription = "Profile",
+                    tint = Color.White,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+        }
         
         Spacer(modifier = Modifier.height(16.dp))
         
@@ -256,7 +283,8 @@ fun HomeHeroSection(
                 color = Color.White,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Medium,
-                lineHeight = 24.sp
+                lineHeight = 24.sp,
+                modifier = Modifier.padding(16.dp)
             )
         }
     }
@@ -269,7 +297,7 @@ fun CapsuleCard(
     onClick: () -> Unit
 ) {
     val view = LocalView.current
-    val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+    val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
     
     Box(
         modifier = Modifier
@@ -307,12 +335,31 @@ fun CapsuleCard(
                 )
                 
                 // Real-time countdown
-                var countdown by remember { mutableStateOf(capsule.countdownLabel) }
+                val countdownLabel = if (!capsule.isUnlocked) {
+                    val diff = capsule.unlockAt - System.currentTimeMillis()
+                    if (diff <= 0) "Unlockable now!"
+                    else {
+                        val days = diff / (1000 * 60 * 60 * 24)
+                        val hours = (diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+                        if (days > 0) "Unlocks in $days d $hours h"
+                        else "Unlocks in $hours h"
+                    }
+                } else ""
+
+                var countdown by remember { mutableStateOf(countdownLabel) }
+                
                 LaunchedEffect(capsule.unlockAt, capsule.isUnlocked) {
                     if (!capsule.isUnlocked) {
                         while (true) {
-                            countdown = capsule.countdownLabel
-                            kotlinx.coroutines.delay(1000)
+                            val d = capsule.unlockAt - System.currentTimeMillis()
+                            countdown = if (d <= 0) "Unlockable now!"
+                            else {
+                                val days = d / (1000 * 60 * 60 * 24)
+                                val hours = (d % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+                                if (days > 0) "Unlocks in $days d $hours h"
+                                else "Unlocks in $hours h"
+                            }
+                            kotlinx.coroutines.delay(60000) // Update every minute
                         }
                     }
                 }

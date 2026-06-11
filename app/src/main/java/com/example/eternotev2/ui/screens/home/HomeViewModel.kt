@@ -48,10 +48,14 @@ class HomeViewModel @Inject constructor(
 
     private fun observeSession() {
         sessionManager.userIdFlow
-            .onEach { userId ->
-                _uiState.update { it.copy(userName = if (userId == "guest") "Traveler" else userId.split("@")[0]) }
+            .onEach { _ ->
+                _uiState.update { it.copy(userName = sessionManager.getUserName()) }
             }
             .launchIn(viewModelScope)
+    }
+
+    fun logout() {
+        sessionManager.clearSession()
     }
 
     private fun loadCapsules() {

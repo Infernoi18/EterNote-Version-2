@@ -21,6 +21,10 @@ class SessionManager @Inject constructor(
         return prefs.getString("user_email", "guest") ?: "guest"
     }
 
+    fun getUserName(): String {
+        return prefs.getString("user_name", "Traveler") ?: "Traveler"
+    }
+
     fun isLoggedIn(): Boolean {
         return prefs.getBoolean("is_logged_in", false)
     }
@@ -29,9 +33,10 @@ class SessionManager @Inject constructor(
         return !isLoggedIn() || getCurrentUserId() == "guest"
     }
 
-    fun setSession(email: String?, isLoggedIn: Boolean) {
+    fun setSession(email: String?, username: String? = null, isLoggedIn: Boolean) {
         prefs.edit().apply {
             putString("user_email", email ?: "guest")
+            putString("user_name", username ?: email?.split("@")?.get(0) ?: "Traveler")
             putBoolean("is_logged_in", isLoggedIn)
             apply()
         }

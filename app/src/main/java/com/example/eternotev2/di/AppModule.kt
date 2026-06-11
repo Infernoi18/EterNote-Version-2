@@ -4,10 +4,12 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
+import com.example.eternotev2.data.auth.SessionManager
 import com.example.eternotev2.data.local.dao.CapsuleDao
 import com.example.eternotev2.data.local.dao.VoiceNoteDao
 import com.example.eternotev2.data.repository.CapsuleRepository
 import com.example.eternotev2.data.repository.UserPreferencesRepository
+import com.example.eternotev2.util.NetworkMonitor
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -32,12 +34,19 @@ object AppModule {
     @Singleton
     fun provideCapsuleRepository(
         capsuleDao: CapsuleDao,
-        voiceNoteDao: VoiceNoteDao
-    ): CapsuleRepository = CapsuleRepository(capsuleDao, voiceNoteDao)
+        voiceNoteDao: VoiceNoteDao,
+        sessionManager: SessionManager
+    ): CapsuleRepository = CapsuleRepository(capsuleDao, voiceNoteDao, sessionManager)
 
     @Provides
     @Singleton
     fun provideUserPreferencesRepository(
         dataStore: DataStore<Preferences>
     ): UserPreferencesRepository = UserPreferencesRepository(dataStore)
+
+    @Provides
+    @Singleton
+    fun provideNetworkMonitor(
+        @ApplicationContext context: Context
+    ): NetworkMonitor = NetworkMonitor(context)
 }

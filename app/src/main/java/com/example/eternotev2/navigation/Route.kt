@@ -30,8 +30,9 @@ sealed class Routes(val route: String) {
         fun createRoute(capsuleId: Long) = "voice_note/$capsuleId"
     }
 
-    // ── Settings ──────────────────────────────────────────────────────────────
+    // ── Settings / Profile ────────────────────────────────────────────────────
     data object Settings : Routes("settings")
+    data object Profile  : Routes("profile")
 }
 
 // ── Bottom Navigation Tabs ────────────────────────────────────────────────────
