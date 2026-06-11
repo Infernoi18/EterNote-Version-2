@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.animation.*
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.ui.graphics.Brush
@@ -62,6 +63,7 @@ import java.util.Locale
 @Composable
 fun TimelineScreen(
     onCapsuleClick: (Long) -> Unit,
+    onProfileClick: () -> Unit,
     viewModel: TimelineViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -81,19 +83,40 @@ fun TimelineScreen(
             contentPadding = PaddingValues(bottom = 120.dp, top = 24.dp)
         ) {
             item {
-                Text(
-                    text = "Timeline",
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = TextPrimary,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
-                )
-                Text(
-                    text = "Your journey, chronologically mapped.",
-                    fontSize = 14.sp,
-                    color = TextSecondary,
-                    modifier = Modifier.padding(horizontal = 24.dp)
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Timeline",
+                            fontSize = 28.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = "Your journey, chronologically mapped.",
+                            fontSize = 14.sp,
+                            color = TextSecondary
+                        )
+                    }
+                    IconButton(
+                        onClick = onProfileClick,
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.1f))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AccountCircle,
+                            contentDescription = "Profile",
+                            tint = Color.White,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                }
                 Spacer(modifier = Modifier.height(32.dp))
             }
 

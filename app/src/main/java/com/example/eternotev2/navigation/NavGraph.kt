@@ -123,7 +123,8 @@ fun EternoteNavGraph(
             TimelineScreen(
                 onCapsuleClick       = { capsuleId ->
                     navController.navigate(Routes.CapsuleDetail.createRoute(capsuleId))
-                }
+                },
+                onProfileClick = { navController.navigate(Routes.Profile.route) }
             )
         }
 
@@ -132,13 +133,16 @@ fun EternoteNavGraph(
             CoreMemoryScreen(
                 onCapsuleClick         = { capsuleId ->
                     navController.navigate(Routes.CapsuleDetail.createRoute(capsuleId))
-                }
+                },
+                onProfileClick = { navController.navigate(Routes.Profile.route) }
             )
         }
 
         // ── Insights ──────────────────────────────────────────────────────────
         composable(Routes.Insights.route) {
-            InsightsScreen()
+            InsightsScreen(
+                onProfileClick = { navController.navigate(Routes.Profile.route) }
+            )
         }
 
         // ── Create Capsule ────────────────────────────────────────────────────
