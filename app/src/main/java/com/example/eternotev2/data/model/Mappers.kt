@@ -10,6 +10,7 @@ import com.example.eternotev2.ui.theme.Mood
 // ── Entity → Domain ───────────────────────────────────────────────────────────
 fun CapsuleEntity.toDomain(): Capsule = Capsule(
     id             = id,
+    userId         = userId,
     title          = title,
     message        = message,
     mood           = parsedMood(),
@@ -28,6 +29,7 @@ fun CapsuleEntity.toDomain(): Capsule = Capsule(
 // ── Domain → Entity ───────────────────────────────────────────────────────────
 fun Capsule.toEntity(): CapsuleEntity = CapsuleEntity(
     id            = id,
+    userId        = userId,
     title         = title,
     message       = message,
     mood          = mood.name,

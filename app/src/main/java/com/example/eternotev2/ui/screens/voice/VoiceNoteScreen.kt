@@ -55,6 +55,11 @@ import com.example.eternotev2.ui.theme.SurfaceGlass
 import com.example.eternotev2.ui.theme.TextPrimary
 import com.example.eternotev2.ui.theme.TextSecondary
 
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Brush
+import com.example.eternotev2.ui.theme.*
+
 @Composable
 fun VoiceNoteScreen(
     capsuleId: Long,
@@ -62,16 +67,19 @@ fun VoiceNoteScreen(
     viewModel: VoiceNoteViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    // For now using a default mood color or we could pass the mood from capsule
+    val baseColor = MoodLovelyPrimary
+    val gradientPartner = MoodLovelySecondary
 
     LaunchedEffect(uiState.isSaved) {
         if (uiState.isSaved) onBack()
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().background(DeepVoid)) {
         AmbientBackground(
             modifier = Modifier.fillMaxSize(),
-            primaryColor = NebulaPink,
-            secondaryColor = CosmicViolet
+            primaryColor = baseColor,
+            secondaryColor = gradientPartner
         )
 
         Column(
@@ -91,17 +99,18 @@ fun VoiceNoteScreen(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .background(SurfaceGlass)
+                        .background(baseColor.copy(alpha = 0.15f))
+                        .border(1.dp, baseColor.copy(alpha = 0.4f), CircleShape)
                         .clickable(onClick = onBack)
                 ) {
-                    Icon(Icons.Filled.Close, contentDescription = "Close", tint = TextSecondary)
+                    Icon(Icons.Filled.Close, contentDescription = "Close", tint = Color.White)
                 }
             }
 
             Spacer(modifier = Modifier.weight(1f))
 
             // Waveform display
-            VoiceWaveform(amplitudes = uiState.amplitudes, color = NebulaPink)
+            VoiceWaveform(amplitudes = uiState.amplitudes, color = baseColor)
 
             Spacer(modifier = Modifier.height(32.dp))
 
@@ -111,7 +120,7 @@ fun VoiceNoteScreen(
                 text = String.format("%02d:%02d", (seconds / 60).toInt(), (seconds % 60).toInt()),
                 fontSize = 48.sp,
                 fontWeight = FontWeight.Light,
-                color = TextPrimary
+                color = Color.White
             )
 
             Spacer(modifier = Modifier.weight(1f))
@@ -119,21 +128,30 @@ fun VoiceNoteScreen(
             // Record Button
             RecordButton(
                 isRecording = uiState.isRecording,
+                baseColor = baseColor,
                 onClick = viewModel::toggleRecording
             )
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Save Button
+            // Save Button (Primary Gradient Button)
             if (uiState.durationMillis > 0 && !uiState.isRecording) {
-                GlowButton(
-                    text = "Save Recording",
-                    onClick = { viewModel.saveVoiceNote(capsuleId) },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp),
-                    glowColor = NebulaPink
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 32.dp)
+                        .height(56.dp)
+                        .background(
+                            brush = Brush.horizontalGradient(listOf(baseColor, gradientPartner)),
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                        .clickable { viewModel.saveVoiceNote(capsuleId) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("Seal Voice Recording", color = Color.White, fontWeight = FontWeight.Bold)
+                }
             } else {
-                Spacer(modifier = Modifier.height(56.dp)) // Placeholder height for button
+                Spacer(modifier = Modifier.height(56.dp))
             }
             
             Spacer(modifier = Modifier.height(48.dp))
@@ -174,7 +192,7 @@ private fun VoiceWaveform(amplitudes: List<Float>, color: Color) {
 }
 
 @Composable
-private fun RecordButton(isRecording: Boolean, onClick: () -> Unit) {
+private fun RecordButton(isRecording: Boolean, baseColor: Color, onClick: () -> Unit) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1f,
@@ -183,7 +201,7 @@ private fun RecordButton(isRecording: Boolean, onClick: () -> Unit) {
         label = "pulseScale"
     )
 
-    val bgColor by animateColorAsState(targetValue = if (isRecording) Color.Red.copy(0.8f) else NebulaPink, label = "bgColor")
+    val bgColor by animateColorAsState(targetValue = if (isRecording) Color.Red.copy(0.8f) else baseColor, label = "bgColor")
 
     Box(
         contentAlignment = Alignment.Center,
@@ -192,6 +210,7 @@ private fun RecordButton(isRecording: Boolean, onClick: () -> Unit) {
             .scale(pulseScale)
             .clip(CircleShape)
             .background(bgColor)
+            .border(2.dp, Color.White.copy(alpha = 0.3f), CircleShape)
             .clickable(onClick = onClick)
     ) {
         Icon(

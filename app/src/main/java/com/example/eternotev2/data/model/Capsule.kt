@@ -5,6 +5,7 @@ import com.example.eternotev2.ui.theme.Mood
 // ── Domain model used across UI, ViewModel, Repository ───────────────────────
 data class Capsule(
     val id: Long,
+    val userId: String,
     val title: String,
     val message: String,
     val mood: Mood,
@@ -36,13 +37,32 @@ data class Capsule(
         }
 
     val countdownLabel: String
-        get() = when {
-            isUnlocked         -> "Opened"
-            isUnlockable       -> "Ready to open"
-            daysUntilUnlock > 365 -> "${daysUntilUnlock / 365}y ${(daysUntilUnlock % 365) / 30}mo"
-            daysUntilUnlock > 30  -> "${daysUntilUnlock / 30}mo ${daysUntilUnlock % 30}d"
-            daysUntilUnlock > 0   -> "${daysUntilUnlock}d ${hoursUntilUnlock % 24}h"
-            else                  -> "${hoursUntilUnlock}h left"
+        get() {
+            val now = System.currentTimeMillis()
+            val diff = unlockAt - now
+            
+            return when {
+                isUnlocked -> "Unlocked"
+                diff <= 0 -> "Ready to open"
+                diff > 24 * 60 * 60 * 1000 -> {
+                    val days = diff / (24 * 60 * 60 * 1000)
+                    "${days}d left"
+                }
+                diff > 60 * 60 * 1000 -> {
+                    val hours = diff / (60 * 60 * 1000)
+                    val minutes = (diff % (60 * 60 * 1000)) / (60 * 1000)
+                    "${hours}h ${minutes}m left"
+                }
+                diff > 60 * 1000 -> {
+                    val minutes = diff / (60 * 1000)
+                    val seconds = (diff % (60 * 1000)) / 1000
+                    "${minutes}m ${seconds}s left"
+                }
+                else -> {
+                    val seconds = diff / 1000
+                    "${seconds}s left"
+                }
+            }
         }
 }
 

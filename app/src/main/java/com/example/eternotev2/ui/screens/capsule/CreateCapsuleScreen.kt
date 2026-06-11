@@ -1,5 +1,7 @@
 package com.example.eternotev2.ui.screens.capsule
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -206,7 +208,7 @@ fun StepIndicator(currentStep: CreateStep) {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        CreateStep.values().forEach { step ->
+        CreateStep.entries.forEach { step ->
             val isActive = step == currentStep
             val isCompleted = step.ordinal < currentStep.ordinal
             
@@ -423,14 +425,15 @@ fun TimingStep(
         initialSelectedDateMillis = selectedDate,
         selectableDates = object : SelectableDates {
             override fun isSelectableDate(utcTimeMillis: Long): Boolean {
-                // Return true only for today and future dates in UTC
+                // Return true only for tomorrow and future dates in UTC
                 val today = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
                     set(Calendar.HOUR_OF_DAY, 0)
                     set(Calendar.MINUTE, 0)
                     set(Calendar.SECOND, 0)
                     set(Calendar.MILLISECOND, 0)
                 }.timeInMillis
-                return utcTimeMillis >= today
+                // Only dates strictly after today are selectable
+                return utcTimeMillis > today
             }
 
             override fun isSelectableYear(year: Int): Boolean {
@@ -460,13 +463,33 @@ fun TimingStep(
                     }
                     showDatePicker = false
                     showTimePicker = true
-                }) { Text("Next") }
+                }) { Text("Next", color = accentColor) }
             },
             dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
-            }
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel", color = Color.White.copy(alpha = 0.6f)) }
+            },
+            colors = DatePickerDefaults.colors(containerColor = Color(0xFF1A1A1A))
         ) {
-            DatePicker(state = datePickerState)
+            DatePicker(
+                state = datePickerState,
+                colors = DatePickerDefaults.colors(
+                    containerColor = Color.Transparent,
+                    titleContentColor = Color.White,
+                    headlineContentColor = Color.White,
+                    weekdayContentColor = Color.White.copy(alpha = 0.5f),
+                    subheadContentColor = Color.White.copy(alpha = 0.5f),
+                    yearContentColor = Color.White.copy(alpha = 0.5f),
+                    currentYearContentColor = accentColor,
+                    selectedYearContentColor = Color.White,
+                    selectedYearContainerColor = accentColor,
+                    dayContentColor = Color.White,
+                    disabledDayContentColor = Color.White.copy(alpha = 0.15f), // Decolorized previous dates
+                    selectedDayContentColor = Color.White,
+                    selectedDayContainerColor = accentColor,
+                    todayContentColor = accentColor,
+                    todayDateBorderColor = accentColor
+                )
+            )
         }
     }
 
@@ -481,15 +504,33 @@ fun TimingStep(
                     calendar.set(Calendar.MINUTE, timePickerState.minute)
                     onDateSelected(calendar.timeInMillis)
                     showTimePicker = false
-                }) { Text("Confirm") }
+                }) { Text("Confirm", color = accentColor) }
             },
             dismissButton = {
-                TextButton(onClick = { showTimePicker = false }) { Text("Cancel") }
+                TextButton(onClick = { showTimePicker = false }) { Text("Cancel", color = Color.White.copy(alpha = 0.6f)) }
             },
-            title = { Text("Select Time") },
+            title = { Text("Select Time", color = Color.White) },
             text = {
-                TimePicker(state = timePickerState)
-            }
+                TimePicker(
+                    state = timePickerState,
+                    colors = TimePickerDefaults.colors(
+                        clockDialColor = Color.White.copy(alpha = 0.05f),
+                        clockDialSelectedContentColor = Color.White,
+                        clockDialUnselectedContentColor = Color.White.copy(alpha = 0.5f),
+                        selectorColor = accentColor,
+                        periodSelectorBorderColor = Color.White.copy(alpha = 0.3f),
+                        periodSelectorSelectedContainerColor = accentColor.copy(alpha = 0.3f),
+                        periodSelectorUnselectedContainerColor = Color.Transparent,
+                        periodSelectorSelectedContentColor = Color.White,
+                        periodSelectorUnselectedContentColor = Color.White.copy(alpha = 0.5f),
+                        timeSelectorSelectedContainerColor = accentColor.copy(alpha = 0.3f),
+                        timeSelectorUnselectedContainerColor = Color.White.copy(alpha = 0.05f),
+                        timeSelectorSelectedContentColor = Color.White,
+                        timeSelectorUnselectedContentColor = Color.White.copy(alpha = 0.5f)
+                    )
+                )
+            },
+            containerColor = Color(0xFF1A1A1A)
         )
     }
 
@@ -677,6 +718,14 @@ fun VoiceRecordingSection(
     onDeleteRecording: () -> Unit,
     accentColor: Color
 ) {
+    val permissionsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            onStartRecording()
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -728,7 +777,9 @@ fun VoiceRecordingSection(
             }
         } else {
             Button(
-                onClick = onStartRecording,
+                onClick = { 
+                    permissionsLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+                },
                 colors = ButtonDefaults.buttonColors(containerColor = accentColor.copy(alpha = 0.2f)),
                 shape = CircleShape,
                 modifier = Modifier.size(56.dp),

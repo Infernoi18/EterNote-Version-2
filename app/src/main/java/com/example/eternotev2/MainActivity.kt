@@ -6,14 +6,11 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
+import androidx.activity.compose.BackHandler
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -67,6 +64,36 @@ fun EternoteApp() {
     }
 
     val showBottomBar = BottomNavTab.entries.any { it.route == currentRoute }
+
+    var showExitDialog by remember { mutableStateOf(false) }
+
+    BackHandler(enabled = currentRoute == BottomNavTab.HOME.route) {
+        showExitDialog = true
+    }
+
+    if (showExitDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitDialog = false },
+            title = { Text("Exit Eternote?") },
+            text = { Text("Are you sure you want to close Eternote?") },
+            confirmButton = {
+                TextButton(onClick = { 
+                    showExitDialog = false
+                    (navController.context as? ComponentActivity)?.finish()
+                }) {
+                    Text("Exit")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitDialog = false }) {
+                    Text("Stay")
+                }
+            },
+            containerColor = DeepVoid,
+            titleContentColor = Color.White,
+            textContentColor = Color.White.copy(alpha = 0.7f)
+        )
+    }
 
     Scaffold(
         bottomBar = {

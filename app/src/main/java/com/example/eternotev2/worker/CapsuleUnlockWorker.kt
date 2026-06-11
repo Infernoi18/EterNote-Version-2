@@ -13,6 +13,7 @@ import androidx.core.app.NotificationCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.example.eternotev2.EternoteApplication
 import com.example.eternotev2.MainActivity
 import com.example.eternotev2.data.repository.CapsuleRepository
 import dagger.assisted.Assisted
@@ -54,7 +55,7 @@ class CapsuleUnlockWorker @AssistedInject constructor(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notification = NotificationCompat.Builder(context, "channel_capsule_unlock")
+        val notification = NotificationCompat.Builder(context, EternoteApplication.CHANNEL_UNLOCK)
             .setSmallIcon(com.example.eternotev2.R.drawable.ic_notification)
             .setContentTitle("🔓 Capsule Unlocked!")
             .setContentText("Your capsule '$capsuleTitle' is ready to be opened.")

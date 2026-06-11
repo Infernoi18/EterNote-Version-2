@@ -35,6 +35,8 @@ class VoiceRecorder @Inject constructor(
                 start()
             } catch (e: Exception) {
                 Log.e("VoiceRecorder", "Recording failed", e)
+                recorder?.release()
+                recorder = null
                 return null
             }
         }

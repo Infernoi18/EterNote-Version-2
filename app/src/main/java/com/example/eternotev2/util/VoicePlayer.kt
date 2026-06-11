@@ -13,20 +13,29 @@ class VoicePlayer @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     private var player: MediaPlayer? = null
+    private var onCompletionListener: (() -> Unit)? = null
 
-    fun playFile(file: File) {
-        MediaPlayer.create(context, Uri.fromFile(file)).apply {
+    fun playFile(file: File, onCompletion: (() -> Unit)? = null) {
+        stop()
+        this.onCompletionListener = onCompletion
+        
+        MediaPlayer().apply {
+            setDataSource(context, Uri.fromFile(file))
+            prepare()
             player = this
             start()
             setOnCompletionListener {
                 stop()
+                onCompletionListener?.invoke()
             }
         }
     }
 
     fun stop() {
-        player?.stop()
-        player?.release()
+        player?.apply {
+            if (isPlaying) stop()
+            release()
+        }
         player = null
     }
 }

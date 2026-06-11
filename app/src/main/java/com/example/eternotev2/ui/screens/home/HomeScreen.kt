@@ -10,7 +10,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -104,22 +107,108 @@ fun HomeScreen(
 
                 // Capsule List Header
                 item {
-                    Text(
-                        text = "Your Time Capsules",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
+                    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Your Time Capsules",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                            
+                            var showSortMenu by remember { mutableStateOf(false) }
+                            Box {
+                                IconButton(onClick = { showSortMenu = true }) {
+                                    Icon(Icons.Default.Sort, contentDescription = "Sort", tint = Color.White)
+                                }
+                                DropdownMenu(
+                                    expanded = showSortMenu,
+                                    onDismissRequest = { showSortMenu = false },
+                                    modifier = Modifier.background(SurfaceMid)
+                                ) {
+                                    SortOrder.values().forEach { order ->
+                                        DropdownMenuItem(
+                                            text = { 
+                                                Text(
+                                                    text = when(order) {
+                                                        SortOrder.DATE_ASC -> "Date (Oldest First)"
+                                                        SortOrder.DATE_DESC -> "Date (Newest First)"
+                                                        SortOrder.NAME_ASC -> "Name (A-Z)"
+                                                        SortOrder.NAME_DESC -> "Name (Z-A)"
+                                                    },
+                                                    color = Color.White
+                                                )
+                                            },
+                                            onClick = {
+                                                viewModel.updateSortOrder(order)
+                                                showSortMenu = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Filter Chips
+                        Row(
+                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            FilterChip(
+                                selected = uiState.filters.status == FilterStatus.ALL,
+                                onClick = { viewModel.updateFilters(uiState.filters.copy(status = FilterStatus.ALL)) },
+                                label = { Text("All") },
+                                colors = FilterChipDefaults.filterChipColors(labelColor = Color.White, selectedLabelColor = Color.Black, selectedContainerColor = moodColors.primary)
+                            )
+                            FilterChip(
+                                selected = uiState.filters.status == FilterStatus.UNOPENED,
+                                onClick = { viewModel.updateFilters(uiState.filters.copy(status = FilterStatus.UNOPENED)) },
+                                label = { Text("Sealed") },
+                                colors = FilterChipDefaults.filterChipColors(labelColor = Color.White, selectedLabelColor = Color.Black, selectedContainerColor = moodColors.primary)
+                            )
+                            FilterChip(
+                                selected = uiState.filters.status == FilterStatus.OPENED,
+                                onClick = { viewModel.updateFilters(uiState.filters.copy(status = FilterStatus.OPENED)) },
+                                label = { Text("Opened") },
+                                colors = FilterChipDefaults.filterChipColors(labelColor = Color.White, selectedLabelColor = Color.Black, selectedContainerColor = moodColors.primary)
+                            )
+                            FilterChip(
+                                selected = uiState.filters.hasVoiceNote == true,
+                                onClick = { 
+                                    val newVal = if (uiState.filters.hasVoiceNote == true) null else true
+                                    viewModel.updateFilters(uiState.filters.copy(hasVoiceNote = newVal)) 
+                                },
+                                label = { Text("Voice") },
+                                colors = FilterChipDefaults.filterChipColors(labelColor = Color.White, selectedLabelColor = Color.Black, selectedContainerColor = moodColors.primary)
+                            )
+                            FilterChip(
+                                selected = uiState.filters.isCoreMemory == true,
+                                onClick = { 
+                                    val newVal = if (uiState.filters.isCoreMemory == true) null else true
+                                    viewModel.updateFilters(uiState.filters.copy(isCoreMemory = newVal)) 
+                                },
+                                label = { Text("Core") },
+                                colors = FilterChipDefaults.filterChipColors(labelColor = Color.White, selectedLabelColor = Color.Black, selectedContainerColor = moodColors.primary)
+                            )
+                        }
+                    }
                 }
 
                 // Capsules
-                if (uiState.capsules.isEmpty()) {
-                    item {
+                if (uiState.filteredCapsules.isEmpty()) {
+                    item(key = "empty_view") {
                         EmptyCapsulesView()
                     }
                 } else {
-                    items(uiState.capsules) { capsule ->
+                    items(
+                        items = uiState.filteredCapsules,
+                        key = { it.id },
+                        contentType = { "capsule_card" }
+                    ) { capsule ->
                         CapsuleCard(
                             capsule = capsule,
                             onClick = { onCapsuleClick(capsule.id) }
@@ -216,8 +305,20 @@ fun CapsuleCard(
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp
                 )
+                
+                // Real-time countdown
+                var countdown by remember { mutableStateOf(capsule.countdownLabel) }
+                LaunchedEffect(capsule.unlockAt, capsule.isUnlocked) {
+                    if (!capsule.isUnlocked) {
+                        while (true) {
+                            countdown = capsule.countdownLabel
+                            kotlinx.coroutines.delay(1000)
+                        }
+                    }
+                }
+
                 Text(
-                    text = "Unlocks: ${dateFormat.format(Date(capsule.unlockAt))}",
+                    text = if (capsule.isUnlocked) "Opened on ${dateFormat.format(Date(capsule.unlockAt))}" else countdown,
                     color = Color.White.copy(alpha = 0.5f),
                     fontSize = 12.sp
                 )

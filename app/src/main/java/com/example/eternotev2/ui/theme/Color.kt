@@ -58,46 +58,53 @@ val GlowWhite       = Color(0x80FFFFFF)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // ── Happy ────────────────────────────────────────────────────────────────────
-val MoodHappyPrimary    = Color(0xFFFFD54F)   // warm gold
-val MoodHappySecondary  = Color(0xFFFF8F00)   // amber
-val MoodHappyTertiary   = Color(0xFFFFF176)   // soft yellow
-val MoodHappyGlow       = Color(0x55FFD54F)
+val MoodHappyPrimary    = Color(0xFFFFD52E)   // Radiant Yellow
+val MoodHappySecondary  = Color(0xFFFFB300)   // Warm Amber
+val MoodHappyTertiary   = Color(0xFFFFEA80)
+val MoodHappyGlow       = Color(0x33FFD52E)   // 20% alpha for glow
 val MoodHappySurface    = Color(0xFF1A1400)
 
+// ── Lovely ───────────────────────────────────────────────────────────────────
+val MoodLovelyPrimary    = Color(0xFFFF4D85)   // Vibrant Rose
+val MoodLovelySecondary  = Color(0xFFD500F9)   // Electric Violet
+val MoodLovelyTertiary   = Color(0xFFFFC1E3)
+val MoodLovelyGlow       = Color(0x33FF4D85)
+val MoodLovelySurface    = Color(0xFF1A0009)
+
 // ── Melancholic ───────────────────────────────────────────────────────────────
-val MoodMelancholicPrimary   = Color(0xFF5C7CFA)   // steel blue
-val MoodMelancholicSecondary = Color(0xFF748FFC)
-val MoodMelancholicTertiary  = Color(0xFF3A5BD4)
-val MoodMelancholicGlow      = Color(0x555C7CFA)
+val MoodMelancholicPrimary   = Color(0xFF21B6FF)   // Clear Azure
+val MoodMelancholicSecondary = Color(0xFF0050D5)   // Deep Ocean Blue
+val MoodMelancholicTertiary  = Color(0xFF80D8FF)
+val MoodMelancholicGlow      = Color(0x3321B6FF)
 val MoodMelancholicSurface   = Color(0xFF030812)
 
 // ── Hopeful ───────────────────────────────────────────────────────────────────
-val MoodHopefulPrimary   = Color(0xFF69F0AE)   // mint green
-val MoodHopefulSecondary = Color(0xFF00E676)
+val MoodHopefulPrimary   = Color(0xFF00E676)   // Spring Green
+val MoodHopefulSecondary = Color(0xFF00A855)   // Rich Emerald
 val MoodHopefulTertiary  = Color(0xFFB9F6CA)
-val MoodHopefulGlow      = Color(0x5569F0AE)
+val MoodHopefulGlow      = Color(0x3300E676)
 val MoodHopefulSurface   = Color(0xFF001208)
 
 // ── Nostalgic ─────────────────────────────────────────────────────────────────
-val MoodNostalgicPrimary   = Color(0xFFFFAB91)   // warm peach/orange
-val MoodNostalgicSecondary = Color(0xFFFF7043)
+val MoodNostalgicPrimary   = Color(0xFFFF9500)   // Glowing Amber
+val MoodNostalgicSecondary = Color(0xFFE65100)   // Burnt Orange
 val MoodNostalgicTertiary  = Color(0xFFFFCCBC)
-val MoodNostalgicGlow      = Color(0x55FFAB91)
+val MoodNostalgicGlow      = Color(0x33FF9500)
 val MoodNostalgicSurface   = Color(0xFF160800)
 
 // ── Anxious ───────────────────────────────────────────────────────────────────
-val MoodAnxiousPrimary   = Color(0xFFE040FB)   // electric purple
-val MoodAnxiousSecondary = Color(0xFFAA00FF)
+val MoodAnxiousPrimary   = Color(0xFFD500F9)   // High-Voltage Violet
+val MoodAnxiousSecondary = Color(0xFF651FFF)   // Deep Indigo
 val MoodAnxiousTertiary  = Color(0xFFEA80FC)
-val MoodAnxiousGlow      = Color(0x55E040FB)
+val MoodAnxiousGlow      = Color(0x33D500F9)
 val MoodAnxiousSurface   = Color(0xFF0F0014)
 
 // ── Grateful ──────────────────────────────────────────────────────────────────
-val MoodGratefulPrimary   = Color(0xFFFF80AB)   // rose pink
-val MoodGratefulSecondary = Color(0xFFF06292)
-val MoodGratefulTertiary  = Color(0xFFFFB3C6)
-val MoodGratefulGlow      = Color(0x55FF80AB)
-val MoodGratefulSurface   = Color(0xFF150009)
+val MoodGratefulPrimary   = Color(0xFF00D0B4)   // Bright Teal
+val MoodGratefulSecondary = Color(0xFF00829B)   // Deep Marine
+val MoodGratefulTertiary  = Color(0xFFB2EBF2)
+val MoodGratefulGlow      = Color(0x3300D0B4)
+val MoodGratefulSurface   = Color(0xFF001512)
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // GRADIENT PRESETS
@@ -115,4 +122,5 @@ val GradientMoodMelancholic= listOf(MoodMelancholicPrimary, MoodMelancholicSecon
 val GradientMoodHopeful    = listOf(MoodHopefulPrimary, MoodHopefulSecondary)
 val GradientMoodNostalgic  = listOf(MoodNostalgicPrimary, MoodNostalgicSecondary)
 val GradientMoodAnxious    = listOf(MoodAnxiousPrimary, MoodAnxiousSecondary)
+val GradientMoodLovely     = listOf(MoodLovelyPrimary, MoodLovelySecondary)
 val GradientMoodGrateful   = listOf(MoodGratefulPrimary, MoodGratefulSecondary)

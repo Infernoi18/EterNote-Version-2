@@ -1,5 +1,6 @@
 package com.example.eternotev2.data.repository
 
+import com.example.eternotev2.data.auth.SessionManager
 import com.example.eternotev2.data.local.dao.CapsuleDao
 import com.example.eternotev2.data.local.dao.VoiceNoteDao
 import com.example.eternotev2.data.local.entity.CapsuleEntity
@@ -8,16 +9,23 @@ import com.example.eternotev2.data.model.VoiceNote
 import com.example.eternotev2.data.model.toDomain
 import com.example.eternotev2.data.model.toEntity
 import com.example.eternotev2.ui.theme.Mood
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @Singleton
 class CapsuleRepository @Inject constructor(
     private val capsuleDao: CapsuleDao,
-    private val voiceNoteDao: VoiceNoteDao
+    private val voiceNoteDao: VoiceNoteDao,
+    private val sessionManager: SessionManager
 ) {
+
+    private fun userId() = sessionManager.getCurrentUserId()
+    private val userIdFlow = sessionManager.userIdFlow
 
     // ── Capsule CRUD ──────────────────────────────────────────────────────────
     suspend fun createCapsule(capsule: Capsule): Long =
@@ -40,36 +48,52 @@ class CapsuleRepository @Inject constructor(
         capsuleDao.getCapsuleByIdOnce(id)?.toDomain()
 
     fun getAllCapsules(): Flow<List<Capsule>> =
-        capsuleDao.getAllCapsules().map { list -> list.map { it.toDomain() } }
+        userIdFlow.flatMapLatest { id ->
+            capsuleDao.getAllCapsules(id)
+        }.map { list -> list.map { it.toDomain() } }
 
     suspend fun getAllCapsulesOnce(): List<Capsule> =
-        capsuleDao.getAllCapsulesOnce().map { it.toDomain() }
+        capsuleDao.getAllCapsulesOnce(userId()).map { it.toDomain() }
 
     fun getLockedCapsules(): Flow<List<Capsule>> =
-        capsuleDao.getLockedCapsules().map { list -> list.map { it.toDomain() } }
+        userIdFlow.flatMapLatest { id ->
+            capsuleDao.getLockedCapsules(id)
+        }.map { list -> list.map { it.toDomain() } }
 
     fun getUnlockedCapsules(): Flow<List<Capsule>> =
-        capsuleDao.getUnlockedCapsules().map { list -> list.map { it.toDomain() } }
+        userIdFlow.flatMapLatest { id ->
+            capsuleDao.getUnlockedCapsules(id)
+        }.map { list -> list.map { it.toDomain() } }
 
     fun getUnlockableCapsules(): Flow<List<Capsule>> =
-        capsuleDao.getUnlockableCapsules(System.currentTimeMillis())
-            .map { list -> list.map { it.toDomain() } }
+        userIdFlow.flatMapLatest { id ->
+            capsuleDao.getUnlockableCapsules(id, System.currentTimeMillis())
+        }.map { list -> list.map { it.toDomain() } }
 
     fun getNextUpcomingCapsule(): Flow<Capsule?> =
-        capsuleDao.getNextUpcomingCapsule(System.currentTimeMillis())
-            .map { it?.toDomain() }
+        userIdFlow.flatMapLatest { id ->
+            capsuleDao.getNextUpcomingCapsule(id, System.currentTimeMillis())
+        }.map { it?.toDomain() }
 
     fun getCoreMemoryCapsules(): Flow<List<Capsule>> =
-        capsuleDao.getCoreMemoryCapsules().map { list -> list.map { it.toDomain() } }
+        userIdFlow.flatMapLatest { id ->
+            capsuleDao.getCoreMemoryCapsules(id)
+        }.map { list -> list.map { it.toDomain() } }
 
     fun getFavoriteCapsules(): Flow<List<Capsule>> =
-        capsuleDao.getFavoriteCapsules().map { list -> list.map { it.toDomain() } }
+        userIdFlow.flatMapLatest { id ->
+            capsuleDao.getFavoriteCapsules(id)
+        }.map { list -> list.map { it.toDomain() } }
 
     fun getCapsulesByMood(mood: Mood): Flow<List<Capsule>> =
-        capsuleDao.getCapsulesByMood(mood.name).map { list -> list.map { it.toDomain() } }
+        userIdFlow.flatMapLatest { id ->
+            capsuleDao.getCapsulesByMood(id, mood.name)
+        }.map { list -> list.map { it.toDomain() } }
 
     fun getCapsulesChronological(): Flow<List<Capsule>> =
-        capsuleDao.getCapsulesChronological().map { list -> list.map { it.toDomain() } }
+        userIdFlow.flatMapLatest { id ->
+            capsuleDao.getCapsulesChronological(id)
+        }.map { list -> list.map { it.toDomain() } }
 
     // ── Capsule State Changes ─────────────────────────────────────────────────
     suspend fun unlockCapsule(id: Long) =
@@ -87,18 +111,28 @@ class CapsuleRepository @Inject constructor(
     suspend fun setWorkRequestId(id: Long, workId: String?) =
         capsuleDao.setWorkRequestId(id, workId)
 
-    // ── Stats ─────────────────────────────────────────────────────────────────
-    fun getTotalCount(): Flow<Int> = capsuleDao.getTotalCount()
-    fun getUnlockedCount(): Flow<Int> = capsuleDao.getUnlockedCount()
-    fun getCoreMemoryCount(): Flow<Int> = capsuleDao.getCoreMemoryCount()
+    suspend fun migrateGuestData(newUserId: String) =
+        capsuleDao.migrateGuestData(newUserId)
 
-    suspend fun getMoodDistribution(): Map<Mood, Int> {
-        val usedMoods = capsuleDao.getUsedMoods()
-        return usedMoods.associate { moodName ->
-            val mood = runCatching { Mood.valueOf(moodName) }.getOrDefault(Mood.NOSTALGIC)
-            mood to capsuleDao.getCountByMood(moodName)
+    // ── Stats ─────────────────────────────────────────────────────────────────
+    fun getTotalCount(): Flow<Int> = 
+        userIdFlow.flatMapLatest { id -> capsuleDao.getTotalCount(id) }
+
+    fun getUnlockedCount(): Flow<Int> = 
+        userIdFlow.flatMapLatest { id -> capsuleDao.getUnlockedCount(id) }
+
+    fun getCoreMemoryCount(): Flow<Int> = 
+        userIdFlow.flatMapLatest { id -> capsuleDao.getCoreMemoryCount(id) }
+
+    fun getMoodDistribution(): Flow<Map<Mood, Int>> = 
+        userIdFlow.flatMapLatest { id ->
+            capsuleDao.getUsedMoodsFlow(id).map { usedMoods ->
+                usedMoods.associate { moodName ->
+                    val mood = runCatching { Mood.valueOf(moodName) }.getOrDefault(Mood.NOSTALGIC)
+                    mood to capsuleDao.getCountByMoodOnce(id, moodName)
+                }
+            }
         }
-    }
 
     // ── Voice Notes ───────────────────────────────────────────────────────────
     fun getVoiceNotesForCapsule(capsuleId: Long): Flow<List<VoiceNote>> =

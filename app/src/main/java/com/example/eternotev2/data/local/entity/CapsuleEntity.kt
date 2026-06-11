@@ -12,7 +12,8 @@ data class CapsuleEntity(
     @ColumnInfo(name = "id")
     val id: Long = 0,
 
-    // ── Content ───────────────────────────────────────────────────────────────
+    @ColumnInfo(name = "user_id")
+    val userId: String,                  // associated user email or "guest"
     @ColumnInfo(name = "title")
     val title: String,
 

@@ -5,6 +5,7 @@ sealed class Routes(val route: String) {
 
     // ── Auth / Intro ──────────────────────────────────────────────────────────
     data object Splash      : Routes("splash")
+    data object Auth        : Routes("auth")
     data object Onboarding  : Routes("onboarding")
 
     // ── Main Tabs ─────────────────────────────────────────────────────────────

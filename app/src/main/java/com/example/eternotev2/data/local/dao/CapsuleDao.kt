@@ -33,56 +33,56 @@ interface CapsuleDao {
     suspend fun getCapsuleByIdOnce(id: Long): CapsuleEntity?
 
     // ── All Capsules ──────────────────────────────────────────────────────────
-    @Query("SELECT * FROM capsules ORDER BY created_at DESC")
-    fun getAllCapsules(): Flow<List<CapsuleEntity>>
+    @Query("SELECT * FROM capsules WHERE user_id = :userId ORDER BY created_at DESC")
+    fun getAllCapsules(userId: String): Flow<List<CapsuleEntity>>
 
-    @Query("SELECT * FROM capsules ORDER BY created_at DESC")
-    suspend fun getAllCapsulesOnce(): List<CapsuleEntity>
+    @Query("SELECT * FROM capsules WHERE user_id = :userId ORDER BY created_at DESC")
+    suspend fun getAllCapsulesOnce(userId: String): List<CapsuleEntity>
 
-    @Query("SELECT * FROM capsules ORDER BY unlock_at ASC")
-    fun getAllCapsulesSortedByUnlock(): Flow<List<CapsuleEntity>>
+    @Query("SELECT * FROM capsules WHERE user_id = :userId ORDER BY unlock_at ASC")
+    fun getAllCapsulesSortedByUnlock(userId: String): Flow<List<CapsuleEntity>>
 
     // ── Locked / Unlocked ─────────────────────────────────────────────────────
-    @Query("SELECT * FROM capsules WHERE is_unlocked = 0 ORDER BY unlock_at ASC")
-    fun getLockedCapsules(): Flow<List<CapsuleEntity>>
+    @Query("SELECT * FROM capsules WHERE user_id = :userId AND is_unlocked = 0 ORDER BY unlock_at ASC")
+    fun getLockedCapsules(userId: String): Flow<List<CapsuleEntity>>
 
-    @Query("SELECT * FROM capsules WHERE is_unlocked = 1 ORDER BY unlock_at DESC")
-    fun getUnlockedCapsules(): Flow<List<CapsuleEntity>>
+    @Query("SELECT * FROM capsules WHERE user_id = :userId AND is_unlocked = 1 ORDER BY unlock_at DESC")
+    fun getUnlockedCapsules(userId: String): Flow<List<CapsuleEntity>>
 
     // ── Ready to unlock ───────────────────────────────────────────────────────
     @Query("""
         SELECT * FROM capsules 
-        WHERE is_unlocked = 0 AND unlock_at <= :currentTime 
+        WHERE user_id = :userId AND is_unlocked = 0 AND unlock_at <= :currentTime 
         ORDER BY unlock_at ASC
     """)
-    fun getUnlockableCapsules(currentTime: Long): Flow<List<CapsuleEntity>>
+    fun getUnlockableCapsules(userId: String, currentTime: Long): Flow<List<CapsuleEntity>>
 
     @Query("""
         SELECT * FROM capsules 
-        WHERE is_unlocked = 0 AND unlock_at <= :currentTime 
+        WHERE user_id = :userId AND is_unlocked = 0 AND unlock_at <= :currentTime 
         ORDER BY unlock_at ASC
     """)
-    suspend fun getUnlockableCapsulesOnce(currentTime: Long): List<CapsuleEntity>
+    suspend fun getUnlockableCapsulesOnce(userId: String, currentTime: Long): List<CapsuleEntity>
 
     // ── Next upcoming capsule ─────────────────────────────────────────────────
     @Query("""
         SELECT * FROM capsules 
-        WHERE is_unlocked = 0 AND unlock_at > :currentTime 
+        WHERE user_id = :userId AND is_unlocked = 0 AND unlock_at > :currentTime 
         ORDER BY unlock_at ASC LIMIT 1
     """)
-    fun getNextUpcomingCapsule(currentTime: Long): Flow<CapsuleEntity?>
+    fun getNextUpcomingCapsule(userId: String, currentTime: Long): Flow<CapsuleEntity?>
 
     // ── Core Memory ───────────────────────────────────────────────────────────
-    @Query("SELECT * FROM capsules WHERE is_core_memory = 1 ORDER BY created_at DESC")
-    fun getCoreMemoryCapsules(): Flow<List<CapsuleEntity>>
+    @Query("SELECT * FROM capsules WHERE user_id = :userId AND is_core_memory = 1 ORDER BY created_at DESC")
+    fun getCoreMemoryCapsules(userId: String): Flow<List<CapsuleEntity>>
 
     // ── Favorites ─────────────────────────────────────────────────────────────
-    @Query("SELECT * FROM capsules WHERE is_favorite = 1 ORDER BY created_at DESC")
-    fun getFavoriteCapsules(): Flow<List<CapsuleEntity>>
+    @Query("SELECT * FROM capsules WHERE user_id = :userId AND is_favorite = 1 ORDER BY created_at DESC")
+    fun getFavoriteCapsules(userId: String): Flow<List<CapsuleEntity>>
 
     // ── Mood filter ───────────────────────────────────────────────────────────
-    @Query("SELECT * FROM capsules WHERE mood = :mood ORDER BY created_at DESC")
-    fun getCapsulesByMood(mood: String): Flow<List<CapsuleEntity>>
+    @Query("SELECT * FROM capsules WHERE user_id = :userId AND mood = :mood ORDER BY created_at DESC")
+    fun getCapsulesByMood(userId: String, mood: String): Flow<List<CapsuleEntity>>
 
     // ── Unlock a capsule ──────────────────────────────────────────────────────
     @Query("UPDATE capsules SET is_unlocked = 1 WHERE id = :id")
@@ -101,23 +101,33 @@ interface CapsuleDao {
     @Query("UPDATE capsules SET work_request_id = :workId WHERE id = :id")
     suspend fun setWorkRequestId(id: Long, workId: String?)
 
+    // ── User Data Management ──────────────────────────────────────────────────
+    @Query("UPDATE capsules SET user_id = :newUserId WHERE user_id = 'guest'")
+    suspend fun migrateGuestData(newUserId: String)
+
     // ── Stats queries ─────────────────────────────────────────────────────────
-    @Query("SELECT COUNT(*) FROM capsules")
-    fun getTotalCount(): Flow<Int>
+    @Query("SELECT COUNT(*) FROM capsules WHERE user_id = :userId")
+    fun getTotalCount(userId: String): Flow<Int>
 
-    @Query("SELECT COUNT(*) FROM capsules WHERE is_unlocked = 1")
-    fun getUnlockedCount(): Flow<Int>
+    @Query("SELECT COUNT(*) FROM capsules WHERE user_id = :userId AND is_unlocked = 1")
+    fun getUnlockedCount(userId: String): Flow<Int>
 
-    @Query("SELECT COUNT(*) FROM capsules WHERE is_core_memory = 1")
-    fun getCoreMemoryCount(): Flow<Int>
+    @Query("SELECT COUNT(*) FROM capsules WHERE user_id = :userId AND is_core_memory = 1")
+    fun getCoreMemoryCount(userId: String): Flow<Int>
 
-    @Query("SELECT COUNT(*) FROM capsules WHERE mood = :mood")
-    suspend fun getCountByMood(mood: String): Int
+    @Query("SELECT COUNT(*) FROM capsules WHERE user_id = :userId AND mood = :mood")
+    suspend fun getCountByMood(userId: String, mood: String): Int
 
-    @Query("SELECT DISTINCT mood FROM capsules")
-    suspend fun getUsedMoods(): List<String>
+    @Query("SELECT COUNT(*) FROM capsules WHERE user_id = :userId AND mood = :mood")
+    suspend fun getCountByMoodOnce(userId: String, mood: String): Int
+
+    @Query("SELECT DISTINCT mood FROM capsules WHERE user_id = :userId")
+    suspend fun getUsedMoods(userId: String): List<String>
+
+    @Query("SELECT DISTINCT mood FROM capsules WHERE user_id = :userId")
+    fun getUsedMoodsFlow(userId: String): Flow<List<String>>
 
     // ── Timeline (grouped by month, we do grouping in repo) ───────────────────
-    @Query("SELECT * FROM capsules ORDER BY created_at ASC")
-    fun getCapsulesChronological(): Flow<List<CapsuleEntity>>
+    @Query("SELECT * FROM capsules WHERE user_id = :userId ORDER BY created_at ASC")
+    fun getCapsulesChronological(userId: String): Flow<List<CapsuleEntity>>
 }

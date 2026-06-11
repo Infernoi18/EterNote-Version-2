@@ -1,5 +1,6 @@
 package com.example.eternotev2.ui.screens.timeline
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,6 +20,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.*
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -88,17 +98,24 @@ fun TimelineScreen(
             }
 
             uiState.groupedCapsules.forEach { (monthYear, capsules) ->
+                val isCollapsed = uiState.collapsedMonths.contains(monthYear)
                 item {
-                    TimelineMonthHeader(monthYear)
-                }
-                items(capsules) { capsule ->
-                    TimelineCapsuleNode(
-                        capsule = capsule,
-                        onClick = {
-                            HapticUtil.performLongPress(view)
-                            onCapsuleClick(capsule.id)
-                        }
+                    TimelineMonthHeader(
+                        monthYear = monthYear,
+                        isCollapsed = isCollapsed,
+                        onToggle = { viewModel.toggleMonth(monthYear) }
                     )
+                }
+                if (!isCollapsed) {
+                    items(capsules) { capsule ->
+                        TimelineCapsuleNode(
+                            capsule = capsule,
+                            onClick = {
+                                HapticUtil.performLongPress(view)
+                                onCapsuleClick(capsule.id)
+                            }
+                        )
+                    }
                 }
             }
 
@@ -121,24 +138,41 @@ fun TimelineScreen(
 }
 
 @Composable
-private fun TimelineMonthHeader(monthYear: String) {
+private fun TimelineMonthHeader(
+    monthYear: String,
+    isCollapsed: Boolean,
+    onToggle: () -> Unit
+) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onToggle() }
+            .padding(horizontal = 24.dp, vertical = 16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .clip(CircleShape)
-                .background(AuroraCyan)
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        Text(
-            text = monthYear.uppercase(),
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 2.sp,
-            color = AuroraCyan
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(AuroraCyan)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = monthYear.uppercase(),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 2.sp,
+                color = AuroraCyan
+            )
+        }
+        
+        Icon(
+            imageVector = if (isCollapsed) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
+            contentDescription = if (isCollapsed) "Expand" else "Collapse",
+            tint = AuroraCyan,
+            modifier = Modifier.size(20.dp)
         )
     }
 }
@@ -151,6 +185,17 @@ private fun TimelineCapsuleNode(
     val moodClrs = moodColors(capsule.mood)
     val formatter = SimpleDateFormat("dd MMM", Locale.getDefault())
     val dateStr = formatter.format(Date(capsule.createdAt))
+
+    val infiniteTransition = rememberInfiniteTransition(label = "glow")
+    val glowScale by infiniteTransition.animateFloat(
+        initialValue = 0.8f,
+        targetValue = 1.2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glowScale"
+    )
 
     Row(
         modifier = Modifier
@@ -166,16 +211,30 @@ private fun TimelineCapsuleNode(
                 modifier = Modifier
                     .size(12.dp)
                     .clip(CircleShape)
-                    .background(moodClrs.primary.copy(0.3f))
+                    .background(moodClrs.primary.copy(0.3f * glowScale))
                     .padding(3.dp)
             ) {
-                Box(modifier = Modifier.fillMaxSize().clip(CircleShape).background(moodClrs.primary))
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(Color.White, moodClrs.primary),
+                                center = androidx.compose.ui.geometry.Offset(0f, 6f)
+                            )
+                        )
+                )
             }
             Box(
                 modifier = Modifier
                     .width(2.dp)
                     .height(60.dp)
-                    .background(SurfaceGlass)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(moodClrs.primary.copy(0.4f * glowScale), SurfaceGlass)
+                        )
+                    )
             )
         }
 

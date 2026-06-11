@@ -2,6 +2,7 @@ package com.example.eternotev2.ui.screens.capsule
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.eternotev2.data.auth.SessionManager
 import com.example.eternotev2.data.model.Capsule
 import com.example.eternotev2.data.model.VoiceNote
 import com.example.eternotev2.data.repository.CapsuleRepository
@@ -45,7 +46,8 @@ data class CreateCapsuleUiState(
 class CreateCapsuleViewModel @Inject constructor(
     private val capsuleRepository: CapsuleRepository,
     private val voiceRecorder: VoiceRecorder,
-    private val workerScheduler: CapsuleWorkerScheduler
+    private val workerScheduler: CapsuleWorkerScheduler,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CreateCapsuleUiState())
@@ -54,6 +56,10 @@ class CreateCapsuleViewModel @Inject constructor(
     private var recordingJob: Job? = null
 
     fun nextStep() {
+        if (_uiState.value.isRecording) {
+            stopRecording()
+        }
+
         val current = _uiState.value.currentStep
         
         if (current == CreateStep.MOOD && _uiState.value.mood == null) {
@@ -142,6 +148,9 @@ class CreateCapsuleViewModel @Inject constructor(
     }
 
     fun saveCapsule() {
+        if (_uiState.value.isRecording) {
+            stopRecording()
+        }
         val currentState = _uiState.value
         val mood = currentState.mood ?: return
         if (currentState.title.isBlank()) return
@@ -151,6 +160,7 @@ class CreateCapsuleViewModel @Inject constructor(
             
             val newCapsule = Capsule(
                 id = 0,
+                userId = sessionManager.getCurrentUserId(),
                 title = currentState.title,
                 message = currentState.message,
                 mood = mood,
@@ -158,7 +168,7 @@ class CreateCapsuleViewModel @Inject constructor(
                 unlockAt = currentState.unlockAt,
                 isUnlocked = false,
                 isCoreMemory = currentState.isCoreMemory,
-                isFavorite = false,
+                isFavorite = currentState.isCoreMemory,
                 hasVoiceNote = currentState.voiceFile != null,
                 imageUri = null,
                 unlockMessage = currentState.unlockMessage.takeIf { it.isNotBlank() },

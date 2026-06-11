@@ -45,6 +45,22 @@ fun CapsuleDetailScreen(
     val uiState by viewModel.uiState.collectAsState()
     val view = LocalView.current
     var showDeleteDialog by remember { mutableStateOf(false) }
+    
+    // Real-time countdown for locked capsules
+    var countdownText by remember(uiState.capsule) { 
+        mutableStateOf(uiState.capsule?.countdownLabel ?: "") 
+    }
+
+    LaunchedEffect(uiState.capsule?.id, uiState.capsule?.unlockAt, uiState.capsule?.isUnlocked) {
+        val capsule = uiState.capsule
+        if (capsule != null && !capsule.isUnlocked) {
+            while (true) {
+                countdownText = capsule.countdownLabel
+                if (System.currentTimeMillis() >= capsule.unlockAt) break
+                kotlinx.coroutines.delay(1000)
+            }
+        }
+    }
 
     LaunchedEffect(capsuleId) {
         viewModel.loadCapsule(capsuleId)
@@ -157,18 +173,22 @@ fun CapsuleDetailScreen(
                     InfoRow(
                         icon = if (capsule.isUnlocked) Icons.Default.LockOpen else Icons.Default.Lock,
                         label = "Status",
-                        value = if (capsule.isUnlocked) "Unlocked" else "Locked until ${formatDate(capsule.unlockAt)}",
+                        value = if (capsule.isUnlocked) {
+                            "Unlocked: ${formatDate(capsule.unlockAt)}"
+                        } else if (System.currentTimeMillis() >= capsule.unlockAt) {
+                            "Ready to unlock"
+                        } else {
+                            "Locked • $countdownText"
+                        },
                         accentColor = colors.primary
                     )
 
-                    if (capsule.isCoreMemory) {
-                        InfoRow(
-                            icon = Icons.Default.AutoAwesome,
-                            label = "Type",
-                            value = "Core Memory",
-                            accentColor = colors.primary
-                        )
-                    }
+                    InfoRow(
+                        icon = Icons.Default.AutoAwesome,
+                        label = "Type",
+                        value = if (capsule.isCoreMemory) "Core Memory" else "None",
+                        accentColor = colors.primary
+                    )
 
                     // Content Preview
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -211,9 +231,14 @@ fun CapsuleDetailScreen(
                     if (capsule.hasVoiceNote) {
                         VoiceNotePreview(
                             isUnlocked = capsule.isUnlocked,
+                            isPlaying = uiState.isPlaying,
                             onPlayClick = {
                                 HapticUtil.performVirtualKey(view)
-                                onVoiceNote()
+                                if (capsule.isUnlocked) {
+                                    viewModel.playVoiceNote()
+                                } else {
+                                    onVoiceNote()
+                                }
                             },
                             accentColor = colors.primary
                         )
@@ -225,7 +250,7 @@ fun CapsuleDetailScreen(
                     if (!capsule.isUnlocked) {
                         val isUnlockable = System.currentTimeMillis() >= capsule.unlockAt
                         GlowButton(
-                            text = if (isUnlockable) "Unlock Now" else "Unlocks in ${capsule.daysUntilUnlock} days",
+                            text = if (isUnlockable) "Unlock Now" else "Unlocking in $countdownText",
                             onClick = {
                                 HapticUtil.performConfirm(view)
                                 onUnlockClick()
@@ -276,6 +301,7 @@ fun InfoRow(icon: ImageVector, label: String, value: String, accentColor: Color)
 @Composable
 fun VoiceNotePreview(
     isUnlocked: Boolean,
+    isPlaying: Boolean,
     onPlayClick: () -> Unit,
     accentColor: Color
 ) {
@@ -288,12 +314,16 @@ fun VoiceNotePreview(
                     listOf(accentColor.copy(alpha = 0.2f), Color.White.copy(alpha = 0.05f))
                 )
             )
-            .clickable(enabled = isUnlocked, onClick = onPlayClick)
+            .clickable(onClick = onPlayClick)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            if (isUnlocked) Icons.Default.PlayArrow else Icons.Default.Mic,
+            imageVector = when {
+                !isUnlocked -> Icons.Default.Mic
+                isPlaying -> Icons.Default.Stop
+                else -> Icons.Default.PlayArrow
+            },
             contentDescription = null,
             tint = accentColor
         )
@@ -301,7 +331,11 @@ fun VoiceNotePreview(
         Column {
             Text("Voice Note", color = Color.White, fontWeight = FontWeight.Bold)
             Text(
-                if (isUnlocked) "Click to play recording" else "Sealed voice memory",
+                text = when {
+                    !isUnlocked -> "Sealed voice memory"
+                    isPlaying -> "Playing recording..."
+                    else -> "Click to play recording"
+                },
                 color = Color.White.copy(alpha = 0.6f),
                 fontSize = 12.sp
             )

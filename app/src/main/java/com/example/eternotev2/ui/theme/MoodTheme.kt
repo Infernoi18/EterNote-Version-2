@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.Color
 // ── Mood Enum ─────────────────────────────────────────────────────────────────
 enum class Mood(val label: String, val emoji: String) {
     HAPPY("Happy", "☀️"),
+    LOVELY("Lovely", "💖"),
     MELANCHOLIC("Melancholic", "🌊"),
     HOPEFUL("Hopeful", "🌱"),
     NOSTALGIC("Nostalgic", "🍂"),
@@ -37,6 +38,14 @@ fun moodColors(mood: Mood): MoodColors = when (mood) {
         glow      = MoodHappyGlow,
         surface   = MoodHappySurface,
         gradient  = GradientMoodHappy
+    )
+    Mood.LOVELY -> MoodColors(
+        primary   = MoodLovelyPrimary,
+        secondary = MoodLovelySecondary,
+        tertiary  = MoodLovelyTertiary,
+        glow      = MoodLovelyGlow,
+        surface   = MoodLovelySurface,
+        gradient  = GradientMoodLovely
     )
     Mood.MELANCHOLIC -> MoodColors(
         primary   = MoodMelancholicPrimary,
@@ -110,6 +119,11 @@ val moodQuotes: Map<Mood, List<String>> = mapOf(
         "Your future self is smiling back at you.",
         "Joy preserved is joy multiplied.",
         "This moment deserved to be remembered."
+    ),
+    Mood.LOVELY to listOf(
+        "Love is the only thing that transcends time.",
+        "Keep this heart safe for the future.",
+        "A beautiful moment shared with the soul."
     ),
     Mood.MELANCHOLIC to listOf(
         "Even the rain has its own kind of beauty.",

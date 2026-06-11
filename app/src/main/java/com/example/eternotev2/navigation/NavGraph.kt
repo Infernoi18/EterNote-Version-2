@@ -12,6 +12,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.example.eternotev2.ui.screens.auth.AuthScreen
 import com.example.eternotev2.ui.screens.capsule.CapsuleDetailScreen
 import com.example.eternotev2.ui.screens.capsule.CapsuleUnlockScreen
 import com.example.eternotev2.ui.screens.capsule.CreateCapsuleScreen
@@ -56,10 +57,23 @@ fun EternoteNavGraph(
         composable(Routes.Splash.route) {
             SplashScreen(
                 onSplashComplete = { isFirstLaunch ->
-                    val destination = if (isFirstLaunch) Routes.Onboarding.route
-                    else Routes.Home.route
+                    val destination = when {
+                        isFirstLaunch -> Routes.Onboarding.route
+                        else -> Routes.Auth.route
+                    }
                     navController.navigate(destination) {
                         popUpTo(Routes.Splash.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        // ── Auth ──────────────────────────────────────────────────────────────
+        composable(Routes.Auth.route) {
+            AuthScreen(
+                onAuthSuccess = {
+                    navController.navigate(Routes.Home.route) {
+                        popUpTo(Routes.Auth.route) { inclusive = true }
                     }
                 }
             )
@@ -69,7 +83,7 @@ fun EternoteNavGraph(
         composable(Routes.Onboarding.route) {
             OnboardingScreen(
                 onOnboardingComplete = {
-                    navController.navigate(Routes.Home.route) {
+                    navController.navigate(Routes.Auth.route) {
                         popUpTo(Routes.Onboarding.route) { inclusive = true }
                     }
                 }
