@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.eternotev2.data.auth.SessionManager
 import com.example.eternotev2.data.model.Capsule
 import com.example.eternotev2.data.repository.CapsuleRepository
+import com.example.eternotev2.data.repository.UserRepository
 import com.example.eternotev2.ui.theme.Mood
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -14,26 +15,28 @@ import javax.inject.Inject
 
 enum class SortOrder { DATE_ASC, DATE_DESC, NAME_ASC, NAME_DESC }
 
+enum class FilterStatus { ALL, OPENED, UNOPENED }
+
 data class CapsuleFilters(
     val status: FilterStatus = FilterStatus.ALL,
     val hasVoiceNote: Boolean? = null,
     val isCoreMemory: Boolean? = null
 )
 
-enum class FilterStatus { ALL, OPENED, UNOPENED }
-
 data class HomeUiState(
-    val currentMood: Mood = Mood.HOPEFUL,
+    val userName: String = "Traveler",
+    val currentMood: Mood = Mood.HAPPY,
     val capsules: List<Capsule> = emptyList(),
     val filteredCapsules: List<Capsule> = emptyList(),
-    val isLoading: Boolean = false,
-    val userName: String = "Traveler",
     val filters: CapsuleFilters = CapsuleFilters(),
-    val sortOrder: SortOrder = SortOrder.DATE_DESC
+    val sortOrder: SortOrder = SortOrder.DATE_DESC,
+    val isLoading: Boolean = true
 )
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class HomeViewModel @Inject constructor(
+    private val userRepository: UserRepository,
     private val capsuleRepository: CapsuleRepository,
     private val sessionManager: SessionManager
 ) : ViewModel() {
@@ -42,14 +45,21 @@ class HomeViewModel @Inject constructor(
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     init {
-        observeSession()
+        observeSessionAndUser()
         loadCapsules()
     }
 
-    private fun observeSession() {
+    private fun observeSessionAndUser() {
         sessionManager.userIdFlow
-            .onEach { _ ->
-                _uiState.update { it.copy(userName = sessionManager.getUserName()) }
+            .flatMapLatest { email ->
+                if (email == "guest") {
+                    flowOf(null)
+                } else {
+                    userRepository.getUserByEmailFlow(email)
+                }
+            }
+            .onEach { user ->
+                _uiState.update { it.copy(userName = user?.username ?: "Traveler") }
             }
             .launchIn(viewModelScope)
     }

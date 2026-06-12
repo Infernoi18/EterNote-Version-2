@@ -4,7 +4,9 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.eternotev2.data.auth.SessionManager
+import com.example.eternotev2.data.local.entity.UserEntity
 import com.example.eternotev2.data.repository.CapsuleRepository
+import com.example.eternotev2.data.repository.UserRepository
 import com.example.eternotev2.util.NetworkMonitor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,6 +30,7 @@ data class AuthUiState(
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
+    private val userRepository: UserRepository,
     private val capsuleRepository: CapsuleRepository,
     private val sessionManager: SessionManager,
     private val networkMonitor: NetworkMonitor
@@ -84,19 +87,41 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             
-            // Simulate network delay
-            kotlinx.coroutines.delay(1000)
+            // Simulate network delay for cinematic feel
+            kotlinx.coroutines.delay(800)
 
             if (state.isLogin) {
-                // In a real app, we'd verify with a backend and get the username. 
-                // For now, let's just log them in.
-                sessionManager.setSession(state.email, state.username.ifBlank { null }, true)
-                _uiState.update { it.copy(isLoading = false, isAuthenticated = true) }
+                val user = userRepository.getUserByEmail(state.email)
+                if (user != null && user.password == state.password) {
+                    sessionManager.setSession(user.email, user.username, true)
+                    _uiState.update { it.copy(isLoading = false, isAuthenticated = true) }
+                } else {
+                    _uiState.update { 
+                        it.copy(
+                            isLoading = false, 
+                            error = if (user == null) "Identity not found. Please register." else "Incorrect password."
+                        ) 
+                    }
+                }
             } else {
                 // Register
-                capsuleRepository.migrateGuestData(state.email)
-                sessionManager.setSession(state.email, state.username, true)
-                _uiState.update { it.copy(isLoading = false, isAuthenticated = true) }
+                val existingUser = userRepository.getUserByEmail(state.email)
+                if (existingUser != null) {
+                    _uiState.update { it.copy(isLoading = false, error = "This email is already registered.") }
+                } else {
+                    val newUser = UserEntity(
+                        email = state.email,
+                        username = state.username,
+                        password = state.password
+                    )
+                    userRepository.registerUser(newUser)
+                    
+                    // Migrate any guest data to this new account
+                    capsuleRepository.migrateGuestData(state.email)
+                    
+                    sessionManager.setSession(state.email, state.username, true)
+                    _uiState.update { it.copy(isLoading = false, isAuthenticated = true) }
+                }
             }
         }
     }

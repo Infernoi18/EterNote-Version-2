@@ -3,11 +3,13 @@ package com.example.eternotev2.ui.screens.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.eternotev2.data.auth.SessionManager
+import com.example.eternotev2.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class ProfileUiState(
@@ -18,6 +20,7 @@ data class ProfileUiState(
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
+    private val userRepository: UserRepository,
     private val sessionManager: SessionManager
 ) : ViewModel() {
 
@@ -29,20 +32,35 @@ class ProfileViewModel @Inject constructor(
     }
 
     private fun loadProfile() {
-        _uiState.update { it.copy(
-            username = sessionManager.getUserName(),
-            email = sessionManager.getCurrentUserId()
-        ) }
+        val email = sessionManager.getCurrentUserId()
+        viewModelScope.launch {
+            userRepository.getUserByEmailFlow(email).collect { user ->
+                if (user != null) {
+                    _uiState.update { it.copy(
+                        username = user.username,
+                        email = user.email
+                    ) }
+                }
+            }
+        }
     }
 
     fun updateUsername(newUsername: String) {
-        // In a real app, update on backend first
-        sessionManager.setSession(
-            email = _uiState.value.email,
-            username = newUsername,
-            isLoggedIn = true
-        )
-        _uiState.update { it.copy(username = newUsername) }
+        viewModelScope.launch {
+            val email = _uiState.value.email
+            val user = userRepository.getUserByEmail(email)
+            if (user != null) {
+                val updatedUser = user.copy(username = newUsername)
+                userRepository.updateUser(updatedUser)
+                
+                // Update session to reflect change immediately in UI components using SharedPreferences
+                sessionManager.setSession(
+                    email = email,
+                    username = newUsername,
+                    isLoggedIn = true
+                )
+            }
+        }
     }
 
     fun logout() {

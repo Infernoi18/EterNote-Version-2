@@ -3,6 +3,7 @@ package com.example.eternotev2.di
 import android.content.Context
 import androidx.room.Room
 import com.example.eternotev2.data.local.dao.CapsuleDao
+import com.example.eternotev2.data.local.dao.UserDao
 import com.example.eternotev2.data.local.dao.VoiceNoteDao
 import com.example.eternotev2.data.local.database.EternoteDatabase
 import dagger.Module
@@ -32,6 +33,11 @@ object DatabaseModule {
     @Singleton
     fun provideCapsuleDao(database: EternoteDatabase): CapsuleDao =
         database.capsuleDao()
+
+    @Provides
+    @Singleton
+    fun provideUserDao(database: EternoteDatabase): UserDao =
+        database.userDao()
 
     @Provides
     @Singleton
