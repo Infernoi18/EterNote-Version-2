@@ -1,4 +1,4 @@
-package com.example.eternotev2.ui.screens.home
+﻿package com.example.eternotev2.ui.screens.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
