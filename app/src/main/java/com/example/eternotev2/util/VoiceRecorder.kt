@@ -18,7 +18,8 @@ class VoiceRecorder @Inject constructor(
     private var currentFile: File? = null
 
     fun startRecording(fileName: String): File? {
-        currentFile = File(context.cacheDir, "$fileName.m4a")
+        val storageDir = File(context.cacheDir, "voice_temp").apply { mkdirs() }
+        currentFile = File(storageDir, "$fileName.m4a")
         
         recorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             MediaRecorder(context)
@@ -28,7 +29,7 @@ class VoiceRecorder @Inject constructor(
             setAudioSource(MediaRecorder.AudioSource.MIC)
             setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
             setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-            setOutputFile(FileOutputStream(currentFile).fd)
+            setOutputFile(currentFile!!.absolutePath)
             
             try {
                 prepare()

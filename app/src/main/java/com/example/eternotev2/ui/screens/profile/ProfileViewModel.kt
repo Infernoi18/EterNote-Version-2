@@ -15,12 +15,16 @@ import javax.inject.Inject
 data class ProfileUiState(
     val username: String = "",
     val email: String = "",
-    val isLoggedOut: Boolean = false
+    val isLoggedOut: Boolean = false,
+    val totalCapsules: Int = 0,
+    val unlockedCapsules: Int = 0,
+    val coreMemories: Int = 0
 )
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val userRepository: UserRepository,
+    private val capsuleRepository: com.example.eternotev2.data.repository.CapsuleRepository,
     private val sessionManager: SessionManager
 ) : ViewModel() {
 
@@ -41,6 +45,24 @@ class ProfileViewModel @Inject constructor(
                         email = user.email
                     ) }
                 }
+            }
+        }
+
+        viewModelScope.launch {
+            capsuleRepository.getTotalCount().collect { count ->
+                _uiState.update { it.copy(totalCapsules = count) }
+            }
+        }
+
+        viewModelScope.launch {
+            capsuleRepository.getUnlockedCount().collect { count ->
+                _uiState.update { it.copy(unlockedCapsules = count) }
+            }
+        }
+
+        viewModelScope.launch {
+            capsuleRepository.getCoreMemoryCount().collect { count ->
+                _uiState.update { it.copy(coreMemories = count) }
             }
         }
     }

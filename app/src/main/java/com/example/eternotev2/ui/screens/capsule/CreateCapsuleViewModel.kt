@@ -2,6 +2,7 @@ package com.example.eternotev2.ui.screens.capsule
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.content.Context
 import com.example.eternotev2.data.auth.SessionManager
 import com.example.eternotev2.data.model.Capsule
 import com.example.eternotev2.data.model.VoiceNote
@@ -10,6 +11,7 @@ import com.example.eternotev2.util.VoiceRecorder
 import com.example.eternotev2.ui.theme.Mood
 import com.example.eternotev2.worker.CapsuleWorkerScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,7 +49,8 @@ class CreateCapsuleViewModel @Inject constructor(
     private val capsuleRepository: CapsuleRepository,
     private val voiceRecorder: VoiceRecorder,
     private val workerScheduler: CapsuleWorkerScheduler,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CreateCapsuleUiState())
@@ -191,17 +194,31 @@ class CreateCapsuleViewModel @Inject constructor(
 
             // Save voice note if exists
             currentState.voiceFile?.let { file ->
-                val voiceNote = VoiceNote(
-                    id = 0,
-                    capsuleId = capsuleId,
-                    filePath = file.absolutePath,
-                    fileName = file.name,
-                    durationMillis = currentState.recordingDuration,
-                    waveformData = currentState.waveform,
-                    createdAt = System.currentTimeMillis(),
-                    transcript = null
-                )
-                capsuleRepository.saveVoiceNote(voiceNote)
+                val permanentFile = File(context.filesDir, "voice_notes/${file.name}")
+                permanentFile.parentFile?.mkdirs()
+                
+                try {
+                    file.inputStream().use { input ->
+                        permanentFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    file.delete()
+
+                    val voiceNote = VoiceNote(
+                        id = 0,
+                        capsuleId = capsuleId,
+                        filePath = permanentFile.absolutePath,
+                        fileName = permanentFile.name,
+                        durationMillis = currentState.recordingDuration,
+                        waveformData = currentState.waveform.map { it * 100f },
+                        createdAt = System.currentTimeMillis(),
+                        transcript = null
+                    )
+                    capsuleRepository.saveVoiceNote(voiceNote)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
 
             _uiState.update { it.copy(isSaving = false, saveSuccess = true) }

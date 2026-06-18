@@ -68,6 +68,10 @@
             </intent-filter>
         </receiver>
 
+        <receiver
+            android:name=".notifications.CapsuleAlarmReceiver"
+            android:exported="false" />
+
     </application>
 
 </manifest>

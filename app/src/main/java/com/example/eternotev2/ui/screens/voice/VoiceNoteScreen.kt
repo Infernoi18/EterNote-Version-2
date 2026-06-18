@@ -25,10 +25,12 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -78,8 +80,8 @@ fun VoiceNoteScreen(
     Box(modifier = Modifier.fillMaxSize().background(DeepVoid)) {
         AmbientBackground(
             modifier = Modifier.fillMaxSize(),
-            primaryColor = baseColor,
-            secondaryColor = gradientPartner
+            primaryColor = if (uiState.isLocked) Color.Gray else baseColor,
+            secondaryColor = if (uiState.isLocked) Color.DarkGray else gradientPartner
         )
 
         Column(
@@ -92,15 +94,16 @@ fun VoiceNoteScreen(
             // Header
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
-                horizontalArrangement = Arrangement.Start
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .background(baseColor.copy(alpha = 0.15f))
-                        .border(1.dp, baseColor.copy(alpha = 0.4f), CircleShape)
+                        .background(Color.White.copy(alpha = 0.15f))
+                        .border(1.dp, Color.White.copy(alpha = 0.4f), CircleShape)
                         .clickable(onClick = onBack)
                 ) {
                     Icon(Icons.Filled.Close, contentDescription = "Close", tint = Color.White)
@@ -109,49 +112,86 @@ fun VoiceNoteScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Waveform display
-            VoiceWaveform(amplitudes = uiState.amplitudes, color = baseColor)
+            if (uiState.isLocked) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        Icons.Default.Lock,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = Color.White.copy(alpha = 0.3f)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "This recording is sealed",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Text(
+                        "Access restricted until the capsule unlocks",
+                        fontSize = 14.sp,
+                        color = Color.White.copy(alpha = 0.5f)
+                    )
+                }
+            } else {
+                // Waveform display
+                VoiceWaveform(amplitudes = uiState.amplitudes, color = baseColor)
 
-            Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(32.dp))
 
-            // Timer
-            val seconds = uiState.durationMillis / 1000
-            Text(
-                text = String.format("%02d:%02d", (seconds / 60).toInt(), (seconds % 60).toInt()),
-                fontSize = 48.sp,
-                fontWeight = FontWeight.Light,
-                color = Color.White
-            )
+                // Timer
+                val seconds = uiState.durationMillis / 1000
+                Text(
+                    text = String.format("%02d:%02d", (seconds / 60).toInt(), (seconds % 60).toInt()),
+                    fontSize = 48.sp,
+                    fontWeight = FontWeight.Light,
+                    color = Color.White
+                )
+            }
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Record Button
-            RecordButton(
-                isRecording = uiState.isRecording,
-                baseColor = baseColor,
-                onClick = viewModel::toggleRecording
-            )
+            if (!uiState.isLocked) {
+                if (!uiState.hasExistingVoiceNote) {
+                    // Record Button
+                    RecordButton(
+                        isRecording = uiState.isRecording,
+                        baseColor = baseColor,
+                        onClick = viewModel::toggleRecording
+                    )
 
-            Spacer(modifier = Modifier.height(32.dp))
+                    Spacer(modifier = Modifier.height(32.dp))
 
-            // Save Button (Primary Gradient Button)
-            if (uiState.durationMillis > 0 && !uiState.isRecording) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 32.dp)
-                        .height(56.dp)
-                        .background(
-                            brush = Brush.horizontalGradient(listOf(baseColor, gradientPartner)),
-                            shape = RoundedCornerShape(16.dp)
-                        )
-                        .clickable { viewModel.saveVoiceNote(capsuleId) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Seal Voice Recording", color = Color.White, fontWeight = FontWeight.Bold)
+                    // Save Button (Primary Gradient Button)
+                    if (uiState.durationMillis > 0 && !uiState.isRecording) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 32.dp)
+                                .height(56.dp)
+                                .background(
+                                    brush = Brush.horizontalGradient(listOf(baseColor, gradientPartner)),
+                                    shape = RoundedCornerShape(16.dp)
+                                )
+                                .clickable { viewModel.saveVoiceNote(capsuleId) },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("Seal Voice Recording", color = Color.White, fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.height(56.dp))
+                    }
+                } else {
+                    Text(
+                        "Voice memory captured",
+                        color = Color.White.copy(alpha = 0.6f),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Spacer(modifier = Modifier.height(88.dp))
                 }
             } else {
-                Spacer(modifier = Modifier.height(56.dp))
+                Spacer(modifier = Modifier.height(176.dp))
             }
             
             Spacer(modifier = Modifier.height(48.dp))

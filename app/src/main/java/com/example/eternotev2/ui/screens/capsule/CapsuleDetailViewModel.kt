@@ -73,6 +73,9 @@ class CapsuleDetailViewModel @Inject constructor(
     }
 
     fun playVoiceNote() {
+        val capsule = _uiState.value.capsule ?: return
+        if (!capsule.isUnlocked) return // Double check: cannot play if locked
+
         val voiceNote = _uiState.value.voiceNotes.firstOrNull() ?: return
         val file = File(voiceNote.filePath)
         if (file.exists()) {

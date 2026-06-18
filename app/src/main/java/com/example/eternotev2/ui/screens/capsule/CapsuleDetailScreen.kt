@@ -1,6 +1,8 @@
 package com.example.eternotev2.ui.screens.capsule
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,8 +18,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -232,12 +236,11 @@ fun CapsuleDetailScreen(
                         VoiceNotePreview(
                             isUnlocked = capsule.isUnlocked,
                             isPlaying = uiState.isPlaying,
+                            waveformData = uiState.voiceNotes.firstOrNull()?.waveformData ?: emptyList(),
                             onPlayClick = {
-                                HapticUtil.performVirtualKey(view)
                                 if (capsule.isUnlocked) {
+                                    HapticUtil.performVirtualKey(view)
                                     viewModel.playVoiceNote()
-                                } else {
-                                    onVoiceNote()
                                 }
                             },
                             accentColor = colors.primary
@@ -302,6 +305,7 @@ fun InfoRow(icon: ImageVector, label: String, value: String, accentColor: Color)
 fun VoiceNotePreview(
     isUnlocked: Boolean,
     isPlaying: Boolean,
+    waveformData: List<Float>,
     onPlayClick: () -> Unit,
     accentColor: Color
 ) {
@@ -311,33 +315,93 @@ fun VoiceNotePreview(
             .clip(RoundedCornerShape(16.dp))
             .background(
                 Brush.horizontalGradient(
-                    listOf(accentColor.copy(alpha = 0.2f), Color.White.copy(alpha = 0.05f))
+                    if (isUnlocked) {
+                        listOf(accentColor.copy(alpha = 0.2f), Color.White.copy(alpha = 0.05f))
+                    } else {
+                        listOf(Color.White.copy(alpha = 0.1f), Color.White.copy(alpha = 0.05f))
+                    }
                 )
             )
-            .clickable(onClick = onPlayClick)
+            .then(if (isUnlocked) Modifier.clickable(onClick = onPlayClick) else Modifier)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             imageVector = when {
-                !isUnlocked -> Icons.Default.Mic
+                !isUnlocked -> Icons.Default.Lock
                 isPlaying -> Icons.Default.Stop
                 else -> Icons.Default.PlayArrow
             },
             contentDescription = null,
-            tint = accentColor
+            tint = if (isUnlocked) accentColor else Color.White.copy(alpha = 0.4f)
         )
+        
         Spacer(modifier = Modifier.width(16.dp))
-        Column {
-            Text("Voice Note", color = Color.White, fontWeight = FontWeight.Bold)
-            Text(
-                text = when {
-                    !isUnlocked -> "Sealed voice memory"
-                    isPlaying -> "Playing recording..."
-                    else -> "Click to play recording"
-                },
-                color = Color.White.copy(alpha = 0.6f),
-                fontSize = 12.sp
+
+        if (isUnlocked && isPlaying && waveformData.isNotEmpty()) {
+            Box(modifier = Modifier.weight(1f).height(40.dp)) {
+                DynamicWaveform(waveformData, accentColor)
+            }
+        } else {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = if (isUnlocked) "Voice Note" else "Sealed Voice Note",
+                    color = if (isUnlocked) Color.White else Color.White.copy(alpha = 0.6f),
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = when {
+                        !isUnlocked -> "Access restricted until unlocked"
+                        isPlaying -> "Playing recording..."
+                        else -> "Click to play recording"
+                    },
+                    color = Color.White.copy(alpha = 0.4f),
+                    fontSize = 12.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun DynamicWaveform(waveform: List<Float>, color: Color) {
+    val infiniteTransition = rememberInfiniteTransition(label = "waveform")
+    val phase by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "phase"
+    )
+
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val width = size.width
+        val height = size.height
+        val centerY = height / 2
+        val barWidth = 3.dp.toPx()
+        val gap = 2.dp.toPx()
+        val maxBars = (width / (barWidth + gap)).toInt()
+        
+        val displayWaveform = if (waveform.size > maxBars) {
+            waveform.takeLast(maxBars)
+        } else {
+            waveform
+        }
+
+        displayWaveform.forEachIndexed { index, amplitude ->
+            val x = index * (barWidth + gap)
+            // Pulse effect based on phase and index
+            val pulse = (Math.sin((index * 0.5) + (phase * Math.PI * 2)).toFloat() + 1f) / 2f
+            val barHeight = (amplitude * height * (0.5f + 0.5f * pulse)).coerceAtLeast(4.dp.toPx())
+            
+            drawLine(
+                color = color,
+                start = Offset(x, centerY - barHeight / 2),
+                end = Offset(x, centerY + barHeight / 2),
+                strokeWidth = barWidth,
+                cap = StrokeCap.Round
             )
         }
     }

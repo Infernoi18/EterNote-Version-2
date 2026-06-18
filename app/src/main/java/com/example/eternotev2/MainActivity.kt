@@ -28,22 +28,49 @@ import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    private var unlockCapsuleIdState = mutableLongStateOf(-1L)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        val initialId = intent.getLongExtra("unlock_capsule_id", -1L)
+        unlockCapsuleIdState.longValue = initialId
+
         setContent {
             EternoteV2Theme {
-                EternoteApp()
+                EternoteApp(
+                    unlockCapsuleId = unlockCapsuleIdState.longValue,
+                    onNotificationHandled = { unlockCapsuleIdState.longValue = -1L }
+                )
             }
+        }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        val capsuleId = intent.getLongExtra("unlock_capsule_id", -1L)
+        if (capsuleId != -1L) {
+            unlockCapsuleIdState.longValue = capsuleId
         }
     }
 }
 
 @Composable
-fun EternoteApp() {
+fun EternoteApp(
+    unlockCapsuleId: Long = -1L,
+    onNotificationHandled: () -> Unit = {}
+) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+
+    LaunchedEffect(unlockCapsuleId) {
+        if (unlockCapsuleId != -1L) {
+            navController.navigate(Routes.CapsuleUnlock.createRoute(unlockCapsuleId))
+            onNotificationHandled()
+        }
+    }
 
     // Runtime Permissions Request
     val permissionsLauncher = rememberLauncherForActivityResult(

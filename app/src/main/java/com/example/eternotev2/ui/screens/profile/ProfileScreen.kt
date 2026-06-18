@@ -2,16 +2,11 @@ package com.example.eternotev2.ui.screens.profile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Logout
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -118,17 +113,20 @@ fun ProfileScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column {
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text("Username", fontSize = 12.sp, color = Color.White.copy(alpha = 0.5f))
                                 if (isEditing) {
                                     OutlinedTextField(
                                         value = editedUsername,
                                         onValueChange = { editedUsername = it },
                                         textStyle = LocalTextStyle.current.copy(color = Color.White),
-                                        modifier = Modifier.fillMaxWidth(0.8f),
+                                        modifier = Modifier.fillMaxWidth(),
+                                        singleLine = true,
                                         colors = OutlinedTextFieldDefaults.colors(
                                             focusedBorderColor = CosmicViolet,
-                                            unfocusedBorderColor = Color.White.copy(alpha = 0.2f)
+                                            unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                                            focusedContainerColor = Color.White.copy(alpha = 0.05f),
+                                            unfocusedContainerColor = Color.Transparent
                                         )
                                     )
                                 } else {
@@ -136,20 +134,41 @@ fun ProfileScreen(
                                 }
                             }
                             
-                            IconButton(onClick = {
+                            Row {
                                 if (isEditing) {
-                                    viewModel.updateUsername(editedUsername)
-                                    isEditing = false
+                                    IconButton(onClick = {
+                                        isEditing = false
+                                    }) {
+                                        Icon(
+                                            Icons.Default.Close,
+                                            contentDescription = "Cancel",
+                                            tint = ErrorRed
+                                        )
+                                    }
+                                    IconButton(onClick = {
+                                        if (editedUsername.isNotBlank()) {
+                                            viewModel.updateUsername(editedUsername)
+                                            isEditing = false
+                                        }
+                                    }) {
+                                        Icon(
+                                            Icons.Default.Check,
+                                            contentDescription = "Save",
+                                            tint = Color.Green
+                                        )
+                                    }
                                 } else {
-                                    editedUsername = uiState.username
-                                    isEditing = true
+                                    IconButton(onClick = {
+                                        editedUsername = uiState.username
+                                        isEditing = true
+                                    }) {
+                                        Icon(
+                                            Icons.Default.Edit,
+                                            contentDescription = "Edit",
+                                            tint = CosmicViolet
+                                        )
+                                    }
                                 }
-                            }) {
-                                Icon(
-                                    if (isEditing) Icons.Default.Person else Icons.Default.Edit,
-                                    contentDescription = "Edit",
-                                    tint = CosmicViolet
-                                )
                             }
                         }
 
@@ -166,6 +185,44 @@ fun ProfileScreen(
                     }
                 }
 
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Stats Section
+                Text(
+                    text = "Your Journey",
+                    fontSize = 14.sp,
+                    color = Color.White.copy(alpha = 0.5f),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                    fontWeight = FontWeight.Medium
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    StatCard(
+                        modifier = Modifier.weight(1f),
+                        label = "Total",
+                        value = uiState.totalCapsules.toString(),
+                        icon = Icons.Default.HourglassEmpty,
+                        color = CosmicViolet
+                    )
+                    StatCard(
+                        modifier = Modifier.weight(1f),
+                        label = "Unlocked",
+                        value = uiState.unlockedCapsules.toString(),
+                        icon = Icons.Default.LockOpen,
+                        color = NebulaPink
+                    )
+                    StatCard(
+                        modifier = Modifier.weight(1f),
+                        label = "Core",
+                        value = uiState.coreMemories.toString(),
+                        icon = Icons.Default.Favorite,
+                        color = AuroraCyan
+                    )
+                }
+
                 Spacer(modifier = Modifier.weight(1f))
 
                 GlowButton(
@@ -177,6 +234,42 @@ fun ProfileScreen(
                 
                 Spacer(modifier = Modifier.height(32.dp))
             }
+        }
+    }
+}
+
+@Composable
+fun StatCard(
+    label: String,
+    value: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    GlassCard(modifier = modifier) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = value,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+            Text(
+                text = label,
+                fontSize = 10.sp,
+                color = Color.White.copy(alpha = 0.5f),
+                fontWeight = FontWeight.Medium
+            )
         }
     }
 }
