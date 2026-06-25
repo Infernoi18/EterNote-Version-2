@@ -4,10 +4,13 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -159,46 +163,60 @@ fun HomeScreen(
                         }
 
                         // Filter Chips
-                        Row(
-                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        val filterLazyListState = rememberLazyListState()
+                        LazyRow(
+                            state = filterLazyListState,
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            contentPadding = PaddingValues(end = 16.dp),
+                            flingBehavior = rememberSnapFlingBehavior(lazyListState = filterLazyListState)
                         ) {
-                            FilterChip(
-                                selected = uiState.filters.status == FilterStatus.ALL,
-                                onClick = { viewModel.updateFilters(uiState.filters.copy(status = FilterStatus.ALL)) },
-                                label = { Text("All") },
-                                colors = FilterChipDefaults.filterChipColors(labelColor = Color.White, selectedLabelColor = Color.Black, selectedContainerColor = moodColors.primary)
-                            )
-                            FilterChip(
-                                selected = uiState.filters.status == FilterStatus.UNOPENED,
-                                onClick = { viewModel.updateFilters(uiState.filters.copy(status = FilterStatus.UNOPENED)) },
-                                label = { Text("Sealed") },
-                                colors = FilterChipDefaults.filterChipColors(labelColor = Color.White, selectedLabelColor = Color.Black, selectedContainerColor = moodColors.primary)
-                            )
-                            FilterChip(
-                                selected = uiState.filters.status == FilterStatus.OPENED,
-                                onClick = { viewModel.updateFilters(uiState.filters.copy(status = FilterStatus.OPENED)) },
-                                label = { Text("Opened") },
-                                colors = FilterChipDefaults.filterChipColors(labelColor = Color.White, selectedLabelColor = Color.Black, selectedContainerColor = moodColors.primary)
-                            )
-                            FilterChip(
-                                selected = uiState.filters.hasVoiceNote == true,
-                                onClick = { 
-                                    val newVal = if (uiState.filters.hasVoiceNote == true) null else true
-                                    viewModel.updateFilters(uiState.filters.copy(hasVoiceNote = newVal)) 
-                                },
-                                label = { Text("Voice") },
-                                colors = FilterChipDefaults.filterChipColors(labelColor = Color.White, selectedLabelColor = Color.Black, selectedContainerColor = moodColors.primary)
-                            )
-                            FilterChip(
-                                selected = uiState.filters.isCoreMemory == true,
-                                onClick = { 
-                                    val newVal = if (uiState.filters.isCoreMemory == true) null else true
-                                    viewModel.updateFilters(uiState.filters.copy(isCoreMemory = newVal)) 
-                                },
-                                label = { Text("Core") },
-                                colors = FilterChipDefaults.filterChipColors(labelColor = Color.White, selectedLabelColor = Color.Black, selectedContainerColor = moodColors.primary)
-                            )
+                            item {
+                                FilterChip(
+                                    selected = uiState.filters.status == FilterStatus.ALL,
+                                    onClick = { viewModel.updateFilters(uiState.filters.copy(status = FilterStatus.ALL)) },
+                                    label = { Text("All") },
+                                    colors = FilterChipDefaults.filterChipColors(labelColor = Color.White, selectedLabelColor = Color.Black, selectedContainerColor = moodColors.primary)
+                                )
+                            }
+                            item {
+                                FilterChip(
+                                    selected = uiState.filters.status == FilterStatus.UNOPENED,
+                                    onClick = { viewModel.updateFilters(uiState.filters.copy(status = FilterStatus.UNOPENED)) },
+                                    label = { Text("Sealed") },
+                                    colors = FilterChipDefaults.filterChipColors(labelColor = Color.White, selectedLabelColor = Color.Black, selectedContainerColor = moodColors.primary)
+                                )
+                            }
+                            item {
+                                FilterChip(
+                                    selected = uiState.filters.status == FilterStatus.OPENED,
+                                    onClick = { viewModel.updateFilters(uiState.filters.copy(status = FilterStatus.OPENED)) },
+                                    label = { Text("Opened") },
+                                    colors = FilterChipDefaults.filterChipColors(labelColor = Color.White, selectedLabelColor = Color.Black, selectedContainerColor = moodColors.primary)
+                                )
+                            }
+                            item {
+                                FilterChip(
+                                    selected = uiState.filters.hasVoiceNote == true,
+                                    onClick = { 
+                                        val newVal = if (uiState.filters.hasVoiceNote == true) null else true
+                                        viewModel.updateFilters(uiState.filters.copy(hasVoiceNote = newVal)) 
+                                    },
+                                    label = { Text("Voice") },
+                                    colors = FilterChipDefaults.filterChipColors(labelColor = Color.White, selectedLabelColor = Color.Black, selectedContainerColor = moodColors.primary)
+                                )
+                            }
+                            item {
+                                FilterChip(
+                                    selected = uiState.filters.isCoreMemory == true,
+                                    onClick = { 
+                                        val newVal = if (uiState.filters.isCoreMemory == true) null else true
+                                        viewModel.updateFilters(uiState.filters.copy(isCoreMemory = newVal)) 
+                                    },
+                                    label = { Text("Core") },
+                                    colors = FilterChipDefaults.filterChipColors(labelColor = Color.White, selectedLabelColor = Color.Black, selectedContainerColor = moodColors.primary)
+                                )
+                            }
                         }
                     }
                 }
@@ -216,7 +234,8 @@ fun HomeScreen(
                     ) { capsule ->
                         CapsuleCard(
                             capsule = capsule,
-                            onClick = { onCapsuleClick(capsule.id) }
+                            onClick = { onCapsuleClick(capsule.id) },
+                            modifier = Modifier.graphicsLayer() // GPU caching for smooth vertical scroll
                         )
                     }
                 }
@@ -294,13 +313,14 @@ fun HomeHeroSection(
 @Composable
 fun CapsuleCard(
     capsule: Capsule,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val view = LocalView.current
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
     
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .background(Color.White.copy(alpha = 0.05f))

@@ -34,9 +34,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -122,7 +125,7 @@ fun TimelineScreen(
 
             uiState.groupedCapsules.forEach { (monthYear, capsules) ->
                 val isCollapsed = uiState.collapsedMonths.contains(monthYear)
-                item {
+                item(key = "header_$monthYear") {
                     TimelineMonthHeader(
                         monthYear = monthYear,
                         isCollapsed = isCollapsed,
@@ -130,13 +133,17 @@ fun TimelineScreen(
                     )
                 }
                 if (!isCollapsed) {
-                    items(capsules) { capsule ->
+                    items(
+                        items = capsules,
+                        key = { it.id }
+                    ) { capsule ->
                         TimelineCapsuleNode(
                             capsule = capsule,
                             onClick = {
                                 HapticUtil.performLongPress(view)
                                 onCapsuleClick(capsule.id)
-                            }
+                            },
+                            modifier = Modifier.graphicsLayer() // GPU isolation for smooth scroll
                         )
                     }
                 }
@@ -203,25 +210,28 @@ private fun TimelineMonthHeader(
 @Composable
 private fun TimelineCapsuleNode(
     capsule: Capsule,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val moodClrs = moodColors(capsule.mood)
-    val formatter = SimpleDateFormat("dd MMM", Locale.getDefault())
-    val dateStr = formatter.format(Date(capsule.createdAt))
+    val formatter = remember { SimpleDateFormat("dd MMM", Locale.getDefault()) }
+    val dateStr = remember(capsule.createdAt) { formatter.format(Date(capsule.createdAt)) }
 
+    // Optimization: Draw animations only when needed or use Draw phase
+    // Note: rememberInfiniteTransition still runs, but we minimize recompositions
     val infiniteTransition = rememberInfiniteTransition(label = "glow")
-    val glowScale by infiniteTransition.animateFloat(
-        initialValue = 0.8f,
-        targetValue = 1.2f,
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.1f,
+        targetValue = 0.4f,
         animationSpec = infiniteRepeatable(
             animation = tween(2000, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
         ),
-        label = "glowScale"
+        label = "glowAlpha"
     )
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp, vertical = 8.dp)
     ) {
@@ -234,8 +244,12 @@ private fun TimelineCapsuleNode(
                 modifier = Modifier
                     .size(12.dp)
                     .clip(CircleShape)
-                    .background(moodClrs.primary.copy(0.3f * glowScale))
-                    .padding(3.dp)
+                    .drawBehind {
+                        drawCircle(
+                            color = moodClrs.primary.copy(alpha = glowAlpha),
+                            radius = size.minDimension / 2 * 1.5f
+                        )
+                    }
             ) {
                 Box(
                     modifier = Modifier
@@ -255,7 +269,7 @@ private fun TimelineCapsuleNode(
                     .height(60.dp)
                     .background(
                         Brush.verticalGradient(
-                            colors = listOf(moodClrs.primary.copy(0.4f * glowScale), SurfaceGlass)
+                            colors = listOf(moodClrs.primary.copy(0.4f), SurfaceGlass)
                         )
                     )
             )
@@ -266,10 +280,14 @@ private fun TimelineCapsuleNode(
         // Content Card
         GlassCard(
             modifier = Modifier.weight(1f),
+            glowColor = moodClrs.primary,
             glowAlpha = 0.05f
         ) {
             Row(
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onClick() }
+                    .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(text = capsule.mood.emoji, fontSize = 24.sp)

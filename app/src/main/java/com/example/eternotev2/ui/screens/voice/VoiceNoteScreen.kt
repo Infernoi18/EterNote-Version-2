@@ -49,7 +49,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.eternotev2.ui.components.ambient.AmbientBackground
 import com.example.eternotev2.ui.components.common.GlowButton
-import com.example.eternotev2.ui.components.common.glowEffect
 import com.example.eternotev2.ui.theme.CosmicViolet
 import com.example.eternotev2.ui.theme.DeepVoid
 import com.example.eternotev2.ui.theme.NebulaPink
@@ -162,22 +161,17 @@ fun VoiceNoteScreen(
 
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    // Save Button (Primary Gradient Button)
+                    // Save Button (Premium Glow Button)
                     if (uiState.durationMillis > 0 && !uiState.isRecording) {
-                        Box(
+                        GlowButton(
+                            text = "Seal Voice Recording",
+                            onClick = { viewModel.saveVoiceNote(capsuleId) },
+                            glowColor = baseColor,
+                            gradientColors = listOf(baseColor, gradientPartner),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 32.dp)
-                                .height(56.dp)
-                                .background(
-                                    brush = Brush.horizontalGradient(listOf(baseColor, gradientPartner)),
-                                    shape = RoundedCornerShape(16.dp)
-                                )
-                                .clickable { viewModel.saveVoiceNote(capsuleId) },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("Seal Voice Recording", color = Color.White, fontWeight = FontWeight.Bold)
-                        }
+                        )
                     } else {
                         Spacer(modifier = Modifier.height(56.dp))
                     }

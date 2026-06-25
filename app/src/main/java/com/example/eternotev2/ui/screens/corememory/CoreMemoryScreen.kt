@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -134,13 +135,17 @@ fun CoreMemoryScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier.weight(1f)
                 ) {
-                    items(uiState.coreMemories) { capsule ->
+                    items(
+                        items = uiState.coreMemories,
+                        key = { it.id }
+                    ) { capsule ->
                         CoreMemoryCard(
                             capsule = capsule,
                             onClick = {
                                 HapticUtil.performLongPress(view)
                                 onCapsuleClick(capsule.id)
-                            }
+                            },
+                            modifier = Modifier.graphicsLayer() // GPU isolation
                         )
                     }
                 }
@@ -152,10 +157,11 @@ fun CoreMemoryScreen(
 @Composable
 private fun CoreMemoryCard(
     capsule: Capsule,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     GlassCard(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
         glowColor = StarGold,
