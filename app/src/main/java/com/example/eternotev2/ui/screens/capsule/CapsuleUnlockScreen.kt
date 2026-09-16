@@ -6,8 +6,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -26,10 +25,12 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.platform.LocalView
 import com.example.eternotev2.util.HapticUtil
+import com.example.eternotev2.data.model.CapsuleType
 import com.example.eternotev2.ui.components.ambient.StarField
-import com.example.eternotev2.ui.components.common.GlowButton
 import com.example.eternotev2.ui.theme.DeepVoid
 import com.example.eternotev2.ui.theme.moodColors
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 @Composable
 fun CapsuleUnlockScreen(
@@ -69,6 +70,7 @@ fun CapsuleUnlockScreen(
                         UnlockPhase.READING -> ReadingPhaseView(
                             title = capsule.title,
                             message = capsule.message,
+                            capsuleType = capsule.capsuleType,
                             accentColor = colors.primary,
                             onFinish = onUnlockComplete
                         )
@@ -189,6 +191,7 @@ fun RevealingPhaseView(emoji: String) {
 fun ReadingPhaseView(
     title: String,
     message: String,
+    capsuleType: CapsuleType,
     accentColor: Color,
     onFinish: () -> Unit
 ) {
@@ -200,12 +203,29 @@ fun ReadingPhaseView(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(
-            Icons.Default.LockOpen,
-            contentDescription = null,
-            tint = accentColor,
-            modifier = Modifier.size(48.dp)
-        )
+        if (capsuleType != CapsuleType.NORMAL) {
+            Icon(
+                Icons.Default.Cake,
+                contentDescription = null,
+                tint = accentColor,
+                modifier = Modifier.size(64.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                "HAPPY BIRTHDAY!",
+                color = accentColor,
+                fontWeight = FontWeight.Black,
+                fontSize = 20.sp,
+                letterSpacing = 2.sp
+            )
+        } else {
+            Icon(
+                Icons.Default.LockOpen,
+                contentDescription = null,
+                tint = accentColor,
+                modifier = Modifier.size(48.dp)
+            )
+        }
         Spacer(modifier = Modifier.height(24.dp))
         Text(
             title,
@@ -223,14 +243,26 @@ fun ReadingPhaseView(
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(64.dp))
-        GlowButton(
-            text = "Keep Memory",
-            onClick = {
-                HapticUtil.performVirtualKey(view)
-                onFinish()
-            },
-            glowColor = accentColor
-        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .background(
+                    brush = Brush.horizontalGradient(listOf(accentColor, accentColor.copy(alpha = 0.7f))),
+                    shape = RoundedCornerShape(16.dp)
+                )
+                .clickable {
+                    HapticUtil.performVirtualKey(view)
+                    onFinish()
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = if (capsuleType != CapsuleType.NORMAL) "Celebrate Memory" else "Keep Memory",
+                color = Color.White,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }
 

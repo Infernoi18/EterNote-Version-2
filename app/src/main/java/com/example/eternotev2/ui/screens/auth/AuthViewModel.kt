@@ -19,6 +19,7 @@ data class AuthUiState(
     val isLogin: Boolean = true,
     val username: String = "",
     val email: String = "",
+    val birthDate: Long? = null,
     val password: String = "",
     val confirmPassword: String = "",
     val isPasswordVisible: Boolean = false,
@@ -57,6 +58,7 @@ class AuthViewModel @Inject constructor(
 
     fun onUsernameChange(value: String) = _uiState.update { it.copy(username = value) }
     fun onEmailChange(value: String) = _uiState.update { it.copy(email = value) }
+    fun onBirthDateChange(value: Long?) = _uiState.update { it.copy(birthDate = value) }
     fun onPasswordChange(value: String) = _uiState.update { it.copy(password = value) }
     fun onConfirmPasswordChange(value: String) = _uiState.update { it.copy(confirmPassword = value) }
     fun togglePasswordVisibility() = _uiState.update { it.copy(isPasswordVisible = !it.isPasswordVisible) }
@@ -108,11 +110,14 @@ class AuthViewModel @Inject constructor(
                 val existingUser = userRepository.getUserByEmail(state.email)
                 if (existingUser != null) {
                     _uiState.update { it.copy(isLoading = false, error = "This email is already registered.") }
+                } else if (state.birthDate == null) {
+                    _uiState.update { it.copy(isLoading = false, error = "Please provide your birth date.") }
                 } else {
                     val newUser = UserEntity(
                         email = state.email,
                         username = state.username,
-                        password = state.password
+                        password = state.password,
+                        birthDate = state.birthDate
                     )
                     userRepository.registerUser(newUser)
                     

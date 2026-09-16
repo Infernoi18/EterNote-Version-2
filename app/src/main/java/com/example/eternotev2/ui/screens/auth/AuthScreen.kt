@@ -20,8 +20,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.eternotev2.ui.components.ambient.StarField
-import com.example.eternotev2.ui.components.common.GlowButton
 import com.example.eternotev2.ui.theme.*
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalContext
+import java.text.SimpleDateFormat
+import java.util.*
 
 @Composable
 fun AuthScreen(
@@ -29,6 +32,8 @@ fun AuthScreen(
     viewModel: AuthViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
 
     LaunchedEffect(uiState.isAuthenticated) {
         if (uiState.isAuthenticated) {
@@ -91,6 +96,39 @@ fun AuthScreen(
                             label = "Username",
                             icon = Icons.Default.Person
                         )
+
+                        val birthDateText = if (uiState.birthDate != null) {
+                            dateFormatter.format(Date(uiState.birthDate!!))
+                        } else ""
+
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            AuthTextField(
+                                value = birthDateText,
+                                onValueChange = { },
+                                label = "Birth Date (dd/mm/yyyy)",
+                                icon = Icons.Default.Cake,
+                                readOnly = true
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clickable {
+                                        val calendar = Calendar.getInstance()
+                                        android.app.DatePickerDialog(
+                                            context,
+                                            { _, year, month, dayOfMonth ->
+                                                val selected = Calendar.getInstance().apply {
+                                                    set(year, month, dayOfMonth)
+                                                }
+                                                viewModel.onBirthDateChange(selected.timeInMillis)
+                                            },
+                                            calendar.get(Calendar.YEAR),
+                                            calendar.get(Calendar.MONTH),
+                                            calendar.get(Calendar.DAY_OF_MONTH)
+                                        ).show()
+                                    }
+                            )
+                        }
                     }
 
                     AuthTextField(
@@ -137,12 +175,23 @@ fun AuthScreen(
                     if (uiState.isLoading) {
                         CircularProgressIndicator(color = CosmicViolet)
                     } else {
-                        GlowButton(
-                            text = if (uiState.isLogin) "Enter Now" else "Create Identity",
-                            onClick = { viewModel.performAuth() },
-                            glowColor = CosmicViolet,
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp)
+                                .background(
+                                    brush = Brush.horizontalGradient(listOf(CosmicViolet, NebulaPink)),
+                                    shape = RoundedCornerShape(16.dp)
+                                )
+                                .clickable { viewModel.performAuth() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = if (uiState.isLogin) "Enter Now" else "Create Identity",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
 
                     Text(
@@ -168,7 +217,8 @@ fun AuthTextField(
     isPassword: Boolean = false,
     isPasswordVisible: Boolean = false,
     onPasswordToggle: (() -> Unit)? = null,
-    keyboardType: KeyboardType = KeyboardType.Text
+    keyboardType: KeyboardType = KeyboardType.Text,
+    readOnly: Boolean = false
 ) {
     OutlinedTextField(
         value = value,
@@ -176,6 +226,7 @@ fun AuthTextField(
         label = { Text(label, fontSize = 14.sp) },
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
+        readOnly = readOnly,
         leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp)) },
         trailingIcon = if (isPassword && onPasswordToggle != null) {
             {

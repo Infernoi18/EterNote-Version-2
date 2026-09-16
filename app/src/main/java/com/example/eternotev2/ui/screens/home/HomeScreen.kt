@@ -1,28 +1,25 @@
 package com.example.eternotev2.ui.screens.home
 
 import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalView
@@ -31,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.eternotev2.data.model.Capsule
+import com.example.eternotev2.data.model.CapsuleType
 import com.example.eternotev2.ui.components.ambient.GlowOrb
 import com.example.eternotev2.ui.components.ambient.ParticleField
 import com.example.eternotev2.ui.components.ambient.StarField
@@ -106,6 +104,17 @@ fun HomeScreen(
                     )
                 }
 
+                // Birthday Highlight
+                uiState.upcomingBirthdayCapsule?.let { capsule ->
+                    item {
+                        BirthdayHighlight(
+                            capsule = capsule,
+                            onClick = { onCapsuleClick(capsule.id) },
+                            accentColor = moodColors(capsule.mood).primary
+                        )
+                    }
+                }
+
                 // Mood Selector
                 item {
                     MoodSelector(
@@ -163,60 +172,48 @@ fun HomeScreen(
                         }
 
                         // Filter Chips
-                        val filterLazyListState = rememberLazyListState()
-                        LazyRow(
-                            state = filterLazyListState,
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            contentPadding = PaddingValues(end = 16.dp),
-                            flingBehavior = rememberSnapFlingBehavior(lazyListState = filterLazyListState)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            item {
-                                FilterChip(
-                                    selected = uiState.filters.status == FilterStatus.ALL,
-                                    onClick = { viewModel.updateFilters(uiState.filters.copy(status = FilterStatus.ALL)) },
-                                    label = { Text("All") },
-                                    colors = FilterChipDefaults.filterChipColors(labelColor = Color.White, selectedLabelColor = Color.Black, selectedContainerColor = moodColors.primary)
-                                )
-                            }
-                            item {
-                                FilterChip(
-                                    selected = uiState.filters.status == FilterStatus.UNOPENED,
-                                    onClick = { viewModel.updateFilters(uiState.filters.copy(status = FilterStatus.UNOPENED)) },
-                                    label = { Text("Sealed") },
-                                    colors = FilterChipDefaults.filterChipColors(labelColor = Color.White, selectedLabelColor = Color.Black, selectedContainerColor = moodColors.primary)
-                                )
-                            }
-                            item {
-                                FilterChip(
-                                    selected = uiState.filters.status == FilterStatus.OPENED,
-                                    onClick = { viewModel.updateFilters(uiState.filters.copy(status = FilterStatus.OPENED)) },
-                                    label = { Text("Opened") },
-                                    colors = FilterChipDefaults.filterChipColors(labelColor = Color.White, selectedLabelColor = Color.Black, selectedContainerColor = moodColors.primary)
-                                )
-                            }
-                            item {
-                                FilterChip(
-                                    selected = uiState.filters.hasVoiceNote == true,
-                                    onClick = { 
-                                        val newVal = if (uiState.filters.hasVoiceNote == true) null else true
-                                        viewModel.updateFilters(uiState.filters.copy(hasVoiceNote = newVal)) 
-                                    },
-                                    label = { Text("Voice") },
-                                    colors = FilterChipDefaults.filterChipColors(labelColor = Color.White, selectedLabelColor = Color.Black, selectedContainerColor = moodColors.primary)
-                                )
-                            }
-                            item {
-                                FilterChip(
-                                    selected = uiState.filters.isCoreMemory == true,
-                                    onClick = { 
-                                        val newVal = if (uiState.filters.isCoreMemory == true) null else true
-                                        viewModel.updateFilters(uiState.filters.copy(isCoreMemory = newVal)) 
-                                    },
-                                    label = { Text("Core") },
-                                    colors = FilterChipDefaults.filterChipColors(labelColor = Color.White, selectedLabelColor = Color.Black, selectedContainerColor = moodColors.primary)
-                                )
-                            }
+                            FilterChip(
+                                selected = uiState.filters.status == FilterStatus.ALL,
+                                onClick = { viewModel.updateFilters(uiState.filters.copy(status = FilterStatus.ALL)) },
+                                label = { Text("All") },
+                                colors = FilterChipDefaults.filterChipColors(labelColor = Color.White, selectedLabelColor = Color.Black, selectedContainerColor = moodColors.primary)
+                            )
+                            FilterChip(
+                                selected = uiState.filters.status == FilterStatus.UNOPENED,
+                                onClick = { viewModel.updateFilters(uiState.filters.copy(status = FilterStatus.UNOPENED)) },
+                                label = { Text("Sealed") },
+                                colors = FilterChipDefaults.filterChipColors(labelColor = Color.White, selectedLabelColor = Color.Black, selectedContainerColor = moodColors.primary)
+                            )
+                            FilterChip(
+                                selected = uiState.filters.status == FilterStatus.OPENED,
+                                onClick = { viewModel.updateFilters(uiState.filters.copy(status = FilterStatus.OPENED)) },
+                                label = { Text("Opened") },
+                                colors = FilterChipDefaults.filterChipColors(labelColor = Color.White, selectedLabelColor = Color.Black, selectedContainerColor = moodColors.primary)
+                            )
+                            FilterChip(
+                                selected = uiState.filters.hasVoiceNote == true,
+                                onClick = { 
+                                    val newVal = if (uiState.filters.hasVoiceNote == true) null else true
+                                    viewModel.updateFilters(uiState.filters.copy(hasVoiceNote = newVal)) 
+                                },
+                                label = { Text("Voice") },
+                                colors = FilterChipDefaults.filterChipColors(labelColor = Color.White, selectedLabelColor = Color.Black, selectedContainerColor = moodColors.primary)
+                            )
+                            FilterChip(
+                                selected = uiState.filters.isCoreMemory == true,
+                                onClick = { 
+                                    val newVal = if (uiState.filters.isCoreMemory == true) null else true
+                                    viewModel.updateFilters(uiState.filters.copy(isCoreMemory = newVal)) 
+                                },
+                                label = { Text("Core") },
+                                colors = FilterChipDefaults.filterChipColors(labelColor = Color.White, selectedLabelColor = Color.Black, selectedContainerColor = moodColors.primary)
+                            )
                         }
                     }
                 }
@@ -234,8 +231,7 @@ fun HomeScreen(
                     ) { capsule ->
                         CapsuleCard(
                             capsule = capsule,
-                            onClick = { onCapsuleClick(capsule.id) },
-                            modifier = Modifier.graphicsLayer() // GPU caching for smooth vertical scroll
+                            onClick = { onCapsuleClick(capsule.id) }
                         )
                     }
                 }
@@ -309,6 +305,79 @@ fun HomeHeroSection(
     }
 }
 
+
+@Composable
+fun BirthdayHighlight(
+    capsule: Capsule,
+    onClick: () -> Unit,
+    accentColor: Color
+) {
+    val view = LocalView.current
+    val isUnlockable = System.currentTimeMillis() >= capsule.unlockAt
+
+    GlassCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                HapticUtil.performConfirm(view)
+                onClick()
+            },
+        border = BorderStroke(1.dp, Brush.linearGradient(listOf(accentColor, Color.White.copy(alpha = 0.2f))))
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(CircleShape)
+                    .background(accentColor.copy(alpha = 0.2f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (capsule.capsuleType == CapsuleType.BIRTHDAY_SELF) Icons.Default.Cake else Icons.Default.Celebration,
+                    contentDescription = null,
+                    tint = accentColor,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = if (capsule.capsuleType == CapsuleType.BIRTHDAY_SELF) "Your Birthday Capsule" else "Upcoming Birthday Gift",
+                    color = accentColor,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+                Text(
+                    text = capsule.title,
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = if (isUnlockable) "Ready to be opened!" else capsule.countdownLabel,
+                    color = Color.White.copy(alpha = 0.6f),
+                    fontSize = 12.sp
+                )
+            }
+
+            if (isUnlockable) {
+                Icon(
+                    Icons.Default.LockOpen,
+                    contentDescription = null,
+                    tint = accentColor,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+    }
+}
 
 @Composable
 fun CapsuleCard(

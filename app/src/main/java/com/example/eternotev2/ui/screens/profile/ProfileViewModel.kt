@@ -15,6 +15,7 @@ import javax.inject.Inject
 data class ProfileUiState(
     val username: String = "",
     val email: String = "",
+    val birthDate: Long? = null,
     val isLoggedOut: Boolean = false,
     val totalCapsules: Int = 0,
     val unlockedCapsules: Int = 0,
@@ -42,7 +43,8 @@ class ProfileViewModel @Inject constructor(
                 if (user != null) {
                     _uiState.update { it.copy(
                         username = user.username,
-                        email = user.email
+                        email = user.email,
+                        birthDate = user.birthDate
                     ) }
                 }
             }
@@ -81,6 +83,17 @@ class ProfileViewModel @Inject constructor(
                     username = newUsername,
                     isLoggedIn = true
                 )
+            }
+        }
+    }
+
+    fun updateBirthDate(newBirthDate: Long) {
+        viewModelScope.launch {
+            val email = _uiState.value.email
+            val user = userRepository.getUserByEmail(email)
+            if (user != null) {
+                val updatedUser = user.copy(birthDate = newBirthDate)
+                userRepository.updateUser(updatedUser)
             }
         }
     }

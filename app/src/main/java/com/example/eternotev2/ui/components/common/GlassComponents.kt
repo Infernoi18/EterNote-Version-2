@@ -1,5 +1,6 @@
 package com.example.eternotev2.ui.components.common
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,52 +14,45 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * A performance-optimized glassmorphic card.
- * Uses hardware-accelerated layers and efficient gradients instead of real-time blur.
+ * A standard glassmorphic card.
  */
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
-    cornerRadius: Dp = 24.dp,
+    cornerRadius: Dp = 20.dp,
     borderWidth: Dp = 1.dp,
-    glowColor: Color = Color.White,
-    glowAlpha: Float = 0f,
+    border: BorderStroke? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Box(
         modifier = modifier
-            .graphicsLayer {
-                this.shape = RoundedCornerShape(cornerRadius)
-                this.clip = true
-                if (glowAlpha > 0f) {
-                    this.shadowElevation = 12.dp.toPx()
-                }
-            }
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = 0.12f),
-                        Color.White.copy(alpha = 0.04f)
-                    )
-                )
-            )
-            .border(
-                width = borderWidth,
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.25f),
+                        Color.White.copy(alpha = 0.1f),
                         Color.White.copy(alpha = 0.05f)
                     )
                 ),
                 shape = RoundedCornerShape(cornerRadius)
             )
+            .then(
+                if (border != null) {
+                    Modifier.border(border, RoundedCornerShape(cornerRadius))
+                } else {
+                    Modifier.border(
+                        width = borderWidth,
+                        color = Color.White.copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(cornerRadius)
+                    )
+                }
+            )
+            .clip(RoundedCornerShape(cornerRadius))
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -70,62 +64,6 @@ fun GlassCard(
     }
 }
 
-/**
- * A glowing button with hardware-accelerated shadows.
- */
-@Composable
-fun GlowButton(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    glowColor: Color = MaterialTheme.colorScheme.primary,
-    gradientColors: List<Color>? = null,
-    enabled: Boolean = true
-) {
-    val finalGradient = gradientColors ?: listOf(
-        glowColor.copy(alpha = 0.8f),
-        glowColor
-    )
-
-    Box(
-        modifier = modifier
-            .height(56.dp)
-            .fillMaxWidth()
-            .graphicsLayer {
-                this.shape = RoundedCornerShape(16.dp)
-                this.clip = true
-                if (enabled) {
-                    this.shadowElevation = 8.dp.toPx()
-                }
-            }
-            .background(
-                if (enabled) {
-                    Brush.linearGradient(colors = finalGradient)
-                } else {
-                    Brush.linearGradient(
-                        colors = listOf(
-                            Color.Gray.copy(alpha = 0.3f),
-                            Color.Gray.copy(alpha = 0.5f)
-                        )
-                    )
-                }
-            )
-            .clickable(enabled = enabled, onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = text,
-            color = Color.White,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.2.sp
-        )
-    }
-}
-
-/**
- * Minimalistic Glass Tag for categories or status.
- */
 @Composable
 fun GlassTag(
     text: String,

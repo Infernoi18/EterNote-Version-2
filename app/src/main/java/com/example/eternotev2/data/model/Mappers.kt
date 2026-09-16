@@ -22,6 +22,7 @@ fun CapsuleEntity.toDomain(): Capsule = Capsule(
     hasVoiceNote   = hasVoiceNote,
     imageUri       = imageUri,
     unlockMessage  = unlockMessage,
+    capsuleType    = runCatching { CapsuleType.valueOf(capsuleType) }.getOrDefault(CapsuleType.NORMAL),
     tags           = parsedTags(),
     workRequestId  = workRequestId
 )
@@ -41,6 +42,7 @@ fun Capsule.toEntity(): CapsuleEntity = CapsuleEntity(
     hasVoiceNote  = hasVoiceNote,
     imageUri      = imageUri,
     unlockMessage = unlockMessage,
+    capsuleType   = capsuleType.name,
     tags          = tags.joinToString(","),
     workRequestId = workRequestId
 )

@@ -5,8 +5,10 @@ import androidx.lifecycle.viewModelScope
 import android.content.Context
 import com.example.eternotev2.data.auth.SessionManager
 import com.example.eternotev2.data.model.Capsule
+import com.example.eternotev2.data.model.CapsuleType
 import com.example.eternotev2.data.model.VoiceNote
 import com.example.eternotev2.data.repository.CapsuleRepository
+import com.example.eternotev2.data.repository.UserRepository
 import com.example.eternotev2.util.VoiceRecorder
 import com.example.eternotev2.ui.theme.Mood
 import com.example.eternotev2.worker.CapsuleWorkerScheduler
@@ -34,6 +36,8 @@ data class CreateCapsuleUiState(
     val unlockMessage: String = "",
     val mood: Mood? = null,
     val showMoodError: Boolean = false,
+    val capsuleType: CapsuleType = CapsuleType.NORMAL,
+    val userBirthDate: Long? = null,
     val unlockAt: Long = System.currentTimeMillis() + (1000 * 60 * 60 * 24), // 1 day later
     val isSaving: Boolean = false,
     val saveSuccess: Boolean = false,
@@ -46,6 +50,7 @@ data class CreateCapsuleUiState(
 
 @HiltViewModel
 class CreateCapsuleViewModel @Inject constructor(
+    private val userRepository: UserRepository,
     private val capsuleRepository: CapsuleRepository,
     private val voiceRecorder: VoiceRecorder,
     private val workerScheduler: CapsuleWorkerScheduler,
@@ -57,6 +62,18 @@ class CreateCapsuleViewModel @Inject constructor(
     val uiState = _uiState.asStateFlow()
 
     private var recordingJob: Job? = null
+
+    init {
+        loadUserBirthDate()
+    }
+
+    private fun loadUserBirthDate() {
+        viewModelScope.launch {
+            val email = sessionManager.getCurrentUserId()
+            val user = userRepository.getUserByEmail(email)
+            _uiState.update { it.copy(userBirthDate = user?.birthDate) }
+        }
+    }
 
     fun nextStep() {
         if (_uiState.value.isRecording) {
@@ -98,6 +115,28 @@ class CreateCapsuleViewModel @Inject constructor(
     fun onMessageChanged(message: String) = _uiState.update { it.copy(message = message) }
     fun onUnlockMessageChanged(msg: String) = _uiState.update { it.copy(unlockMessage = msg) }
     fun onMoodChanged(mood: Mood) = _uiState.update { it.copy(mood = mood, showMoodError = false) }
+    fun onCapsuleTypeChanged(type: CapsuleType) {
+        _uiState.update { it.copy(capsuleType = type) }
+        if (type == CapsuleType.BIRTHDAY_SELF) {
+            calculateNextBirthdayUnlock()
+        }
+    }
+
+    private fun calculateNextBirthdayUnlock() {
+        val birthDate = _uiState.value.userBirthDate ?: return
+        val calendar = java.util.Calendar.getInstance()
+        val birthCalendar = java.util.Calendar.getInstance().apply { timeInMillis = birthDate }
+        
+        calendar.set(java.util.Calendar.MONTH, birthCalendar.get(java.util.Calendar.MONTH))
+        calendar.set(java.util.Calendar.DAY_OF_MONTH, birthCalendar.get(java.util.Calendar.DAY_OF_MONTH))
+        
+        if (calendar.timeInMillis < System.currentTimeMillis()) {
+            calendar.add(java.util.Calendar.YEAR, 1)
+        }
+        
+        _uiState.update { it.copy(unlockAt = calendar.timeInMillis) }
+    }
+
     fun onUnlockDateChanged(timestamp: Long) = _uiState.update { it.copy(unlockAt = timestamp) }
 
     fun startRecording() {
@@ -175,6 +214,7 @@ class CreateCapsuleViewModel @Inject constructor(
                 hasVoiceNote = currentState.voiceFile != null,
                 imageUri = null,
                 unlockMessage = currentState.unlockMessage.takeIf { it.isNotBlank() },
+                capsuleType = currentState.capsuleType,
                 tags = currentState.tags,
                 workRequestId = null
             )

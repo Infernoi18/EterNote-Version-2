@@ -170,9 +170,7 @@ fun InsightsScreen(
 @Composable
 private fun StatCardInsights(label: String, value: Int, color: Color, modifier: Modifier = Modifier) {
     GlassCard(
-        modifier = modifier,
-        glowColor = color,
-        glowAlpha = 0.1f
+        modifier = modifier
     ) {
         Column(
             modifier = Modifier.padding(vertical = 16.dp, horizontal = 12.dp),

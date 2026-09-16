@@ -142,8 +142,7 @@ fun TimelineScreen(
                             onClick = {
                                 HapticUtil.performLongPress(view)
                                 onCapsuleClick(capsule.id)
-                            },
-                            modifier = Modifier.graphicsLayer() // GPU isolation for smooth scroll
+                            }
                         )
                     }
                 }
@@ -244,12 +243,7 @@ private fun TimelineCapsuleNode(
                 modifier = Modifier
                     .size(12.dp)
                     .clip(CircleShape)
-                    .drawBehind {
-                        drawCircle(
-                            color = moodClrs.primary.copy(alpha = glowAlpha),
-                            radius = size.minDimension / 2 * 1.5f
-                        )
-                    }
+                    .background(moodClrs.primary.copy(alpha = glowAlpha))
             ) {
                 Box(
                     modifier = Modifier
@@ -279,9 +273,7 @@ private fun TimelineCapsuleNode(
 
         // Content Card
         GlassCard(
-            modifier = Modifier.weight(1f),
-            glowColor = moodClrs.primary,
-            glowAlpha = 0.05f
+            modifier = Modifier.weight(1f)
         ) {
             Row(
                 modifier = Modifier

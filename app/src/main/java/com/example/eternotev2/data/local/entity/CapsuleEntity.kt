@@ -51,6 +51,9 @@ data class CapsuleEntity(
     @ColumnInfo(name = "unlock_message")
     val unlockMessage: String? = null,   // optional message shown at unlock
 
+    @ColumnInfo(name = "capsule_type")
+    val capsuleType: String = "NORMAL",  // NORMAL, BIRTHDAY_SELF, BIRTHDAY_OTHER
+
     @ColumnInfo(name = "tags")
     val tags: String = "",               // comma-separated tag list e.g. "love,2024,trip"
 

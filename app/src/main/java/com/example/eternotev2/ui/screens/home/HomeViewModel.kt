@@ -27,6 +27,7 @@ data class HomeUiState(
     val userName: String = "Traveler",
     val currentMood: Mood = Mood.HAPPY,
     val capsules: List<Capsule> = emptyList(),
+    val upcomingBirthdayCapsule: Capsule? = null,
     val filteredCapsules: List<Capsule> = emptyList(),
     val filters: CapsuleFilters = CapsuleFilters(),
     val sortOrder: SortOrder = SortOrder.DATE_DESC,
@@ -71,9 +72,14 @@ class HomeViewModel @Inject constructor(
     private fun loadCapsules() {
         capsuleRepository.getAllCapsules()
             .onEach { capsules ->
+                val upcomingBirthday = capsules
+                    .filter { !it.isUnlocked && it.capsuleType != com.example.eternotev2.data.model.CapsuleType.NORMAL }
+                    .minByOrNull { it.unlockAt }
+
                 _uiState.update { state ->
                     state.copy(
                         capsules = capsules,
+                        upcomingBirthdayCapsule = upcomingBirthday,
                         filteredCapsules = applyFilterAndSort(capsules, state.filters, state.sortOrder),
                         isLoading = false
                     )

@@ -40,8 +40,10 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import com.example.eternotev2.ui.components.mood.MoodSelector
 import com.example.eternotev2.ui.components.ambient.StarField
-import com.example.eternotev2.ui.components.common.GlowButton
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.style.TextAlign
+import com.example.eternotev2.data.model.CapsuleType
 import com.example.eternotev2.util.HapticUtil
 import com.example.eternotev2.ui.theme.DeepVoid
 import com.example.eternotev2.ui.theme.Mood
@@ -140,12 +142,14 @@ fun CreateCapsuleScreen(
                                 title = uiState.title,
                                 tags = uiState.tags,
                                 isCoreMemory = uiState.isCoreMemory,
+                                capsuleType = uiState.capsuleType,
                                 onTitleChange = { viewModel.onTitleChanged(it) },
                                 onTagsChange = { viewModel.onTagsChanged(it) },
                                 onCoreMemoryChange = { 
                                     HapticUtil.performVirtualKey(view)
                                     viewModel.onCoreMemoryChanged(it) 
                                 },
+                                onCapsuleTypeChange = { viewModel.onCapsuleTypeChanged(it) },
                                 accentColor = colors.primary
                             )
                             CreateStep.MOOD -> MoodStep(
@@ -187,6 +191,7 @@ fun CreateCapsuleScreen(
                             )
                             CreateStep.TIMING -> TimingStep(
                                 selectedDate = uiState.unlockAt,
+                                capsuleType = uiState.capsuleType,
                                 onDateSelected = { viewModel.onUnlockDateChanged(it) },
                                 accentColor = colors.primary
                             )
@@ -235,9 +240,11 @@ fun IdentityStep(
     title: String,
     tags: List<String>,
     isCoreMemory: Boolean,
+    capsuleType: CapsuleType,
     onTitleChange: (String) -> Unit,
     onTagsChange: (List<String>) -> Unit,
     onCoreMemoryChange: (Boolean) -> Unit,
+    onCapsuleTypeChange: (CapsuleType) -> Unit,
     accentColor: Color
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
@@ -259,6 +266,12 @@ fun IdentityStep(
                 focusedBorderColor = accentColor,
                 unfocusedBorderColor = Color.White.copy(alpha = 0.3f)
             )
+        )
+
+        CapsuleTypeSelector(
+            selectedType = capsuleType,
+            onTypeSelected = onCapsuleTypeChange,
+            accentColor = accentColor
         )
 
         // Core Memory Toggle
@@ -414,6 +427,7 @@ fun MessageStep(
 @Composable
 fun TimingStep(
     selectedDate: Long,
+    capsuleType: CapsuleType,
     onDateSelected: (Long) -> Unit,
     accentColor: Color
 ) {
@@ -535,12 +549,24 @@ fun TimingStep(
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        Text(
-            "When should this capsule reveal itself?",
-            color = Color.White,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                "When should this capsule reveal itself?",
+                color = Color.White,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+            if (capsuleType != CapsuleType.NORMAL) {
+                Text(
+                    text = if (capsuleType == CapsuleType.BIRTHDAY_SELF)
+                        "Scheduled for your next birthday"
+                    else "Dedicated for someone's birthday",
+                    color = accentColor,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
 
         val presets = listOf(
             "1 Day" to 1000L * 60 * 60 * 24,
@@ -603,6 +629,18 @@ fun ReviewStep(
 
         ReviewItem(label = "Title", value = uiState.title)
         ReviewItem(
+            label = "Type",
+            value = when(uiState.capsuleType) {
+                CapsuleType.NORMAL -> "Regular Memory"
+                CapsuleType.BIRTHDAY_SELF -> "My Birthday"
+                CapsuleType.BIRTHDAY_OTHER -> "Someone's Birthday"
+            },
+            icon = when(uiState.capsuleType) {
+                CapsuleType.NORMAL -> Icons.Default.Description
+                else -> Icons.Default.Cake
+            }
+        )
+        ReviewItem(
             label = "Mood",
             value = uiState.mood?.let { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } } ?: "Not selected",
             icon = Icons.Default.Face
@@ -617,6 +655,78 @@ fun ReviewStep(
         if (uiState.isCoreMemory) {
             ReviewItem(label = "Type", value = "Core Memory", icon = Icons.Default.AutoAwesome)
         }
+    }
+}
+
+@Composable
+fun CapsuleTypeSelector(
+    selectedType: CapsuleType,
+    onTypeSelected: (CapsuleType) -> Unit,
+    accentColor: Color
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Capsule Type", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            CapsuleTypeOption(
+                isSelected = selectedType == CapsuleType.NORMAL,
+                onClick = { onTypeSelected(CapsuleType.NORMAL) },
+                accentColor = accentColor,
+                icon = Icons.Default.HistoryEdu,
+                label = "Normal"
+            )
+            CapsuleTypeOption(
+                isSelected = selectedType == CapsuleType.BIRTHDAY_SELF,
+                onClick = { onTypeSelected(CapsuleType.BIRTHDAY_SELF) },
+                accentColor = accentColor,
+                icon = Icons.Default.Cake,
+                label = "My Birthday"
+            )
+            CapsuleTypeOption(
+                isSelected = selectedType == CapsuleType.BIRTHDAY_OTHER,
+                onClick = { onTypeSelected(CapsuleType.BIRTHDAY_OTHER) },
+                accentColor = accentColor,
+                icon = Icons.Default.Celebration,
+                label = "Other's"
+            )
+        }
+    }
+}
+
+@Composable
+fun RowScope.CapsuleTypeOption(
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    accentColor: Color,
+    icon: ImageVector,
+    label: String
+) {
+    Column(
+        modifier = Modifier
+            .weight(1f)
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (isSelected) accentColor.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.05f))
+            .border(1.dp, if (isSelected) accentColor else Color.Transparent, RoundedCornerShape(12.dp))
+            .clickable { onClick() }
+            .padding(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = if (isSelected) accentColor else Color.White.copy(alpha = 0.5f)
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            label,
+            color = if (isSelected) Color.White else Color.White.copy(alpha = 0.5f),
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
@@ -674,15 +784,26 @@ fun CreationNavigationBar(
             }
 
             if (currentStep == CreateStep.REVIEW) {
-                GlowButton(
-                    text = "Seal Memory",
-                    onClick = {
-                        HapticUtil.performConfirm(view)
-                        onSave()
-                    },
-                    glowColor = accentColor,
-                    modifier = Modifier.width(180.dp)
-                )
+                Box(
+                    modifier = Modifier
+                        .width(180.dp)
+                        .height(48.dp)
+                        .background(
+                            brush = Brush.horizontalGradient(listOf(accentColor, accentColor.copy(alpha = 0.7f))),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        .clickable {
+                            HapticUtil.performConfirm(view)
+                            onSave()
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Seal Memory",
+                        color = Color.Black,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             } else {
                 Button(
                     onClick = {

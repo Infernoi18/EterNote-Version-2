@@ -15,7 +15,7 @@ import com.example.eternotev2.data.local.entity.VoiceNoteEntity
         VoiceNoteEntity::class,
         UserEntity::class
     ],
-    version   = 3,
+    version   = 5,
     exportSchema = true      // enables schema export for migration tracking
 )
 abstract class EternoteDatabase : RoomDatabase() {

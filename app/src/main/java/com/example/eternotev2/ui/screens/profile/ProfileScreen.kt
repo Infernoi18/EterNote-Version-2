@@ -19,8 +19,13 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.eternotev2.ui.components.ambient.StarField
 import com.example.eternotev2.ui.components.common.GlassCard
-import com.example.eternotev2.ui.components.common.GlowButton
 import com.example.eternotev2.ui.theme.*
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.platform.LocalContext
+import java.text.SimpleDateFormat
+import java.util.*
 
 @Composable
 fun ProfileScreen(
@@ -31,6 +36,8 @@ fun ProfileScreen(
     val uiState by viewModel.uiState.collectAsState()
     var isEditing by remember { mutableStateOf(false) }
     var editedUsername by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
 
     LaunchedEffect(uiState.isLoggedOut) {
         if (uiState.isLoggedOut) {
@@ -182,6 +189,44 @@ fun ProfileScreen(
                                 Text(uiState.email, fontSize = 16.sp, color = Color.White)
                             }
                         }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Column {
+                            Text("Birth Date", fontSize = 12.sp, color = Color.White.copy(alpha = 0.5f))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        val calendar = Calendar.getInstance()
+                                        uiState.birthDate?.let { calendar.timeInMillis = it }
+                                        android.app.DatePickerDialog(
+                                            context,
+                                            { _, year, month, dayOfMonth ->
+                                                val selected = Calendar.getInstance().apply {
+                                                    set(year, month, dayOfMonth)
+                                                }
+                                                viewModel.updateBirthDate(selected.timeInMillis)
+                                            },
+                                            calendar.get(Calendar.YEAR),
+                                            calendar.get(Calendar.MONTH),
+                                            calendar.get(Calendar.DAY_OF_MONTH)
+                                        ).show()
+                                    }
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.Cake, contentDescription = null, tint = CosmicViolet, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = if (uiState.birthDate != null) dateFormatter.format(Date(uiState.birthDate!!)) else "Not set",
+                                    fontSize = 16.sp,
+                                    color = Color.White
+                                )
+                                Spacer(modifier = Modifier.weight(1f))
+                                Icon(Icons.Default.Edit, contentDescription = null, tint = Color.White.copy(alpha = 0.3f), modifier = Modifier.size(14.dp))
+                            }
+                        }
                     }
                 }
 
@@ -225,12 +270,24 @@ fun ProfileScreen(
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                GlowButton(
-                    text = "Log Out",
-                    onClick = { viewModel.logout() },
-                    glowColor = ErrorRed,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .background(
+                            brush = Brush.horizontalGradient(listOf(ErrorRed.copy(alpha = 0.7f), ErrorRed)),
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                        .clickable { viewModel.logout() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Log Out",
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
                 
                 Spacer(modifier = Modifier.height(32.dp))
             }

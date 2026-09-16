@@ -25,11 +25,9 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -48,18 +46,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.eternotev2.ui.components.ambient.AmbientBackground
-import com.example.eternotev2.ui.components.common.GlowButton
-import com.example.eternotev2.ui.theme.CosmicViolet
 import com.example.eternotev2.ui.theme.DeepVoid
-import com.example.eternotev2.ui.theme.NebulaPink
-import com.example.eternotev2.ui.theme.SurfaceGlass
-import com.example.eternotev2.ui.theme.TextPrimary
-import com.example.eternotev2.ui.theme.TextSecondary
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Brush
 import com.example.eternotev2.ui.theme.*
+import java.util.Locale
 
 @Composable
 fun VoiceNoteScreen(
@@ -141,7 +134,7 @@ fun VoiceNoteScreen(
                 // Timer
                 val seconds = uiState.durationMillis / 1000
                 Text(
-                    text = String.format("%02d:%02d", (seconds / 60).toInt(), (seconds % 60).toInt()),
+                    text = String.format(Locale.getDefault(), "%02d:%02d", (seconds / 60).toInt(), (seconds % 60).toInt()),
                     fontSize = 48.sp,
                     fontWeight = FontWeight.Light,
                     color = Color.White
@@ -161,17 +154,22 @@ fun VoiceNoteScreen(
 
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    // Save Button (Premium Glow Button)
+                    // Save Button (Primary Gradient Button)
                     if (uiState.durationMillis > 0 && !uiState.isRecording) {
-                        GlowButton(
-                            text = "Seal Voice Recording",
-                            onClick = { viewModel.saveVoiceNote(capsuleId) },
-                            glowColor = baseColor,
-                            gradientColors = listOf(baseColor, gradientPartner),
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 32.dp)
-                        )
+                                .height(56.dp)
+                                .background(
+                                    brush = Brush.horizontalGradient(listOf(baseColor, gradientPartner)),
+                                    shape = RoundedCornerShape(16.dp)
+                                )
+                                .clickable { viewModel.saveVoiceNote(capsuleId) },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("Seal Voice Recording", color = Color.White, fontWeight = FontWeight.Bold)
+                        }
                     } else {
                         Spacer(modifier = Modifier.height(56.dp))
                     }

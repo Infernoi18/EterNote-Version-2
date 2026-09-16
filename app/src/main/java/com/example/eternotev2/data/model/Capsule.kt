@@ -17,6 +17,7 @@ data class Capsule(
     val hasVoiceNote: Boolean,
     val imageUri: String?,
     val unlockMessage: String?,
+    val capsuleType: CapsuleType = CapsuleType.NORMAL,
     val tags: List<String>,
     val workRequestId: String?
 ) {

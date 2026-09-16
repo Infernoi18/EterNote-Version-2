@@ -144,8 +144,7 @@ fun CoreMemoryScreen(
                             onClick = {
                                 HapticUtil.performLongPress(view)
                                 onCapsuleClick(capsule.id)
-                            },
-                            modifier = Modifier.graphicsLayer() // GPU isolation
+                            }
                         )
                     }
                 }
@@ -163,9 +162,7 @@ private fun CoreMemoryCard(
     GlassCard(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        glowColor = StarGold,
-        glowAlpha = 0.15f
+            .clickable(onClick = onClick)
     ) {
         Column(
             modifier = Modifier
