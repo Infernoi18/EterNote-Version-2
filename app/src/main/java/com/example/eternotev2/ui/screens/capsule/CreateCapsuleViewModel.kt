@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.File
+import java.util.Calendar
 import javax.inject.Inject
 
 enum class CreateStep {
@@ -117,21 +118,49 @@ class CreateCapsuleViewModel @Inject constructor(
     fun onMoodChanged(mood: Mood) = _uiState.update { it.copy(mood = mood, showMoodError = false) }
     fun onCapsuleTypeChanged(type: CapsuleType) {
         _uiState.update { it.copy(capsuleType = type) }
-        if (type == CapsuleType.BIRTHDAY_SELF) {
-            calculateNextBirthdayUnlock()
+        when (type) {
+            CapsuleType.BIRTHDAY_SELF -> calculateNextBirthdayUnlock()
+            CapsuleType.BIRTHDAY_OTHER -> {
+                // If it's for someone else, we default to next year same date as today 
+                // but usually the user would pick a date. 
+                // However, the user wants "Year + Time" only.
+                // We'll default to today's Month/Day and let them pick Year.
+                val cal = Calendar.getInstance()
+                cal.add(Calendar.YEAR, 1)
+                _uiState.update { it.copy(unlockAt = cal.timeInMillis) }
+            }
+            else -> {}
         }
+    }
+
+    fun updateUnlockYear(year: Int) {
+        val cal = Calendar.getInstance().apply {
+            timeInMillis = _uiState.value.unlockAt
+            set(Calendar.YEAR, year)
+        }
+        _uiState.update { it.copy(unlockAt = cal.timeInMillis) }
+    }
+
+    fun updateUnlockTime(hour: Int, minute: Int) {
+        val cal = Calendar.getInstance()
+        cal.timeInMillis = _uiState.value.unlockAt
+        cal.set(Calendar.HOUR_OF_DAY, hour)
+        cal.set(Calendar.MINUTE, minute)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        _uiState.update { it.copy(unlockAt = cal.timeInMillis) }
     }
 
     private fun calculateNextBirthdayUnlock() {
         val birthDate = _uiState.value.userBirthDate ?: return
-        val calendar = java.util.Calendar.getInstance()
-        val birthCalendar = java.util.Calendar.getInstance().apply { timeInMillis = birthDate }
+        val calendar = Calendar.getInstance()
+        val birthCalendar = Calendar.getInstance().apply { timeInMillis = birthDate }
         
-        calendar.set(java.util.Calendar.MONTH, birthCalendar.get(java.util.Calendar.MONTH))
-        calendar.set(java.util.Calendar.DAY_OF_MONTH, birthCalendar.get(java.util.Calendar.DAY_OF_MONTH))
+        calendar.set(Calendar.MONTH, birthCalendar.get(Calendar.MONTH))
+        calendar.set(Calendar.DAY_OF_MONTH, birthCalendar.get(Calendar.DAY_OF_MONTH))
         
         if (calendar.timeInMillis < System.currentTimeMillis()) {
-            calendar.add(java.util.Calendar.YEAR, 1)
+            calendar.add(Calendar.YEAR, 1)
         }
         
         _uiState.update { it.copy(unlockAt = calendar.timeInMillis) }
@@ -187,6 +216,39 @@ class CreateCapsuleViewModel @Inject constructor(
     fun deleteRecording() {
         _uiState.value.voiceFile?.delete()
         _uiState.update { it.copy(voiceFile = null, waveform = emptyList(), recordingDuration = 0) }
+    }
+
+    fun updateUnlockMonthDay(month: Int, day: Int) {
+        val cal = Calendar.getInstance()
+        cal.timeInMillis = _uiState.value.unlockAt
+        cal.set(Calendar.MONTH, month)
+        cal.set(Calendar.DAY_OF_MONTH, day)
+        _uiState.update { it.copy(unlockAt = cal.timeInMillis) }
+    }
+
+    /**
+     * Returns a Calendar set to the user's date of birth,
+     * or null if birth date is not yet set.
+     */
+    fun getUserBirthCalendar(): Calendar? {
+        val birthMillis = _uiState.value.userBirthDate
+        if (birthMillis == null || birthMillis == 0L) return null
+        return Calendar.getInstance().apply { timeInMillis = birthMillis }
+    }
+
+    fun getAgeAtUnlock(): Int? {
+        val birthDate = _uiState.value.userBirthDate ?: return null
+        val birthCal = Calendar.getInstance().apply { timeInMillis = birthDate }
+        val unlockCal = Calendar.getInstance().apply { timeInMillis = _uiState.value.unlockAt }
+        
+        var age = unlockCal.get(Calendar.YEAR) - birthCal.get(Calendar.YEAR)
+        // If unlock is before birthday in the target year, subtract 1
+        if (unlockCal.get(Calendar.MONTH) < birthCal.get(Calendar.MONTH) ||
+            (unlockCal.get(Calendar.MONTH) == birthCal.get(Calendar.MONTH) && 
+             unlockCal.get(Calendar.DAY_OF_MONTH) < birthCal.get(Calendar.DAY_OF_MONTH))) {
+            age--
+        }
+        return age
     }
 
     fun saveCapsule() {

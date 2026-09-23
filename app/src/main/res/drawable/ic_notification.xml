@@ -3,7 +3,46 @@
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
+
+    <!--
+        Simplified silhouette derived from the Eternote capsule logo.
+        Notification icons must be pure white + transparent only.
+        This traces the outer capsule pill shape from the launcher icon.
+    -->
+
+    <!-- Outer capsule body -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M12,2C6.48,2 2,6.48 2,12s4.48,10 10,10 10,-4.48 10,-10S17.52,2 12,2zM12,20c-4.41,0 -8,-3.59 -8,-8s3.59,-8 8,-8 8,3.59 8,8 -3.59,8 -8,8zM12.5,7L11,7v6l5.25,3.15 0.75,-1.23 -4.5,-2.67z" />
+        android:pathData="
+            M16.5,4.5
+            C13.5,4.5 11.2,6.2 10.2,8.5
+            C9.2,6.2 6.9,4.5 3.9,4.5
+            C1.7,4.5 0,6.2 0,8.5
+            L0,15.5
+            C0,17.8 1.7,19.5 3.9,19.5
+            C6.9,19.5 9.2,17.8 10.2,15.5
+            C11.2,17.8 13.5,19.5 16.5,19.5
+            C18.7,19.5 20.4,17.8 20.4,15.5
+            L20.4,8.5
+            C20.4,6.2 18.7,4.5 16.5,4.5Z" />
+
+    <!-- Center divider — the signature split line of the capsule -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5"
+        android:fillColor="#00000000"
+        android:pathData="M10.2,5.5 L10.2,18.5" />
+
+    <!-- Small eye/lens detail at top — references the purple eye in your logo -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1"
+        android:pathData="
+            M10.2,7
+            C8.8,7 7.6,7.8 7.6,9
+            C7.6,10.2 8.8,11 10.2,11
+            C11.6,11 12.8,10.2 12.8,9
+            C12.8,7.8 11.6,7 10.2,7Z" />
+
 </vector>

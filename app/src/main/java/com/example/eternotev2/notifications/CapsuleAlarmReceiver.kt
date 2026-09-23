@@ -56,6 +56,7 @@ class CapsuleAlarmReceiver : BroadcastReceiver() {
             .setContentText("Your capsule '$capsuleTitle' is ready to be opened.")
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setAutoCancel(true)
+            .setColor(0xFF7B5CF0.toInt())
             .setContentIntent(pendingIntent)
             .setVibrate(longArrayOf(0, 600, 200, 400, 150, 300, 150, 250))
             .setLights(0xFF33D6FF.toInt(), 500, 2000)
