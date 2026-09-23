@@ -15,7 +15,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.VerticalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -872,9 +875,28 @@ fun DrumPickerColumn(
     onItemSelected: (Int) -> Unit,
     accentColor: Color
 ) {
+    val pagerState = rememberPagerState(initialPage = selectedIndex, pageCount = { items.size })
+    val coroutineScope = rememberCoroutineScope()
+
+    // Sync pagerState changes to external state
+    LaunchedEffect(pagerState.currentPage) {
+        onItemSelected(pagerState.currentPage)
+    }
+
+    // Sync external selectedIndex changes to pagerState
+    LaunchedEffect(selectedIndex) {
+        if (pagerState.currentPage != selectedIndex) {
+            pagerState.scrollToPage(selectedIndex)
+        }
+    }
+
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         IconButton(
-            onClick = { if (selectedIndex > 0) onItemSelected(selectedIndex - 1) },
+            onClick = { 
+                if (pagerState.currentPage > 0) {
+                    coroutineScope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
+                }
+            },
             modifier = Modifier.size(40.dp)
         ) {
             Icon(
@@ -895,30 +917,30 @@ fun DrumPickerColumn(
                 Box(modifier = Modifier.width(65.dp).height(2.dp).background(accentColor))
             }
             
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = if (selectedIndex > 0) items[selectedIndex - 1] else "",
-                    color = Color.White.copy(alpha = 0.3f),
-                    fontSize = 20.sp
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = items[selectedIndex],
-                    color = Color.White,
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.Normal
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = if (selectedIndex < items.size - 1) items[selectedIndex + 1] else "",
-                    color = Color.White.copy(alpha = 0.3f),
-                    fontSize = 20.sp
-                )
+            VerticalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(vertical = 46.dp)
+            ) { page ->
+                val isSelected = pagerState.currentPage == page
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = items[page],
+                        color = if (isSelected) Color.White else Color.White.copy(alpha = 0.3f),
+                        fontSize = if (isSelected) 26.sp else 20.sp,
+                        textAlign = TextAlign.Center,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                    )
+                }
             }
         }
 
         IconButton(
-            onClick = { if (selectedIndex < items.size - 1) onItemSelected(selectedIndex + 1) },
+            onClick = { 
+                if (pagerState.currentPage < items.size - 1) {
+                    coroutineScope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
+                }
+            },
             modifier = Modifier.size(40.dp)
         ) {
             Icon(
@@ -1147,7 +1169,7 @@ fun NormalTimingSection(
             Spacer(modifier = Modifier.width(8.dp))
             Column {
                 Text(
-                    text      = "📅  Pick Date & Time",
+                    text      = "Pick Date & Time",
                     color     = Color.White,
                     fontSize  = 14.sp,
                     fontWeight = FontWeight.Medium
@@ -1347,7 +1369,7 @@ fun OtherBirthdayTimingSection(
             Spacer(modifier = Modifier.width(8.dp))
             Column {
                 Text(
-                    text      = "📅  Pick Date & Time",
+                    text      = "Pick Date & Time",
                     color     = Color.White,
                     fontSize  = 14.sp,
                     fontWeight = FontWeight.Medium
