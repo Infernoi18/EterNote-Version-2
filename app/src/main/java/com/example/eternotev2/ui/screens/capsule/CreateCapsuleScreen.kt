@@ -12,7 +12,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -740,7 +743,255 @@ fun YearPickerDialog(
     )
 }
 
+// ── Drum Date Picker (Custom wheel picker matching requested style) ───────────
+@Composable
+fun DrumDatePickerDialog(
+    initialDate: Long,
+    onConfirm: (Long) -> Unit,
+    onDismiss: () -> Unit,
+    accentColor: Color
+) {
+    val calendar = remember(initialDate) { Calendar.getInstance().apply { timeInMillis = initialDate } }
+    
+    var year by remember { mutableIntStateOf(calendar.get(Calendar.YEAR)) }
+    var month by remember { mutableIntStateOf(calendar.get(Calendar.MONTH)) }
+    var day by remember { mutableIntStateOf(calendar.get(Calendar.DAY_OF_MONTH)) }
+
+    val currentYear = remember { Calendar.getInstance().get(Calendar.YEAR) }
+    val years = remember { (currentYear..currentYear + 50).map { it.toString() } }
+    val months = remember { listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec") }
+    
+    val daysInMonth = remember(year, month) {
+        val cal = Calendar.getInstance()
+        cal.set(year, month, 1)
+        cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+    }
+    
+    LaunchedEffect(daysInMonth) {
+        if (day > daysInMonth) day = daysInMonth
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = Color(0xFF1A1A1A),
+            modifier = Modifier.width(320.dp)
+        ) {
+            Column {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = "Set date",
+                        color = Color(0xFF00B0FF),
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Normal
+                    )
+                }
+                
+                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFF00B0FF)))
+                
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 32.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    DrumPickerColumn(
+                        items = (1..daysInMonth).map { it.toString().padStart(2, '0') },
+                        selectedIndex = (day - 1).coerceIn(0, daysInMonth - 1),
+                        onItemSelected = { day = it + 1 },
+                        accentColor = Color(0xFF00B0FF)
+                    )
+                    DrumPickerColumn(
+                        items = months,
+                        selectedIndex = month,
+                        onItemSelected = { month = it },
+                        accentColor = Color(0xFF00B0FF)
+                    )
+                    DrumPickerColumn(
+                        items = years,
+                        selectedIndex = years.indexOf(year.toString()).coerceAtLeast(0),
+                        onItemSelected = { year = years[it].toInt() },
+                        accentColor = Color(0xFF00B0FF)
+                    )
+                }
+                
+                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.1f)))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(64.dp)
+                ) {
+                    TextButton(
+                        onClick = onDismiss, 
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                        shape = RoundedCornerShape(0.dp)
+                    ) {
+                        Text("Cancel", color = Color.White, fontSize = 18.sp)
+                    }
+                    Box(modifier = Modifier.fillMaxHeight().width(1.dp).background(Color.White.copy(alpha = 0.1f)))
+                    TextButton(
+                        onClick = {
+                            val today = Calendar.getInstance()
+                            year = today.get(Calendar.YEAR)
+                            month = today.get(Calendar.MONTH)
+                            day = today.get(Calendar.DAY_OF_MONTH)
+                        }, 
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                        shape = RoundedCornerShape(0.dp)
+                    ) {
+                        Text("Clear", color = Color.White, fontSize = 18.sp)
+                    }
+                    Box(modifier = Modifier.fillMaxHeight().width(1.dp).background(Color.White.copy(alpha = 0.1f)))
+                    TextButton(
+                        onClick = {
+                            val cal = Calendar.getInstance().apply { timeInMillis = initialDate }
+                            cal.set(Calendar.YEAR, year)
+                            cal.set(Calendar.MONTH, month)
+                            cal.set(Calendar.DAY_OF_MONTH, day)
+                            onConfirm(cal.timeInMillis)
+                        }, 
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                        shape = RoundedCornerShape(0.dp)
+                    ) {
+                        Text("Set", color = Color.White, fontSize = 18.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DrumPickerColumn(
+    items: List<String>,
+    selectedIndex: Int,
+    onItemSelected: (Int) -> Unit,
+    accentColor: Color
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        IconButton(
+            onClick = { if (selectedIndex > 0) onItemSelected(selectedIndex - 1) },
+            modifier = Modifier.size(40.dp)
+        ) {
+            Icon(
+                Icons.Default.ArrowDropUp, 
+                contentDescription = null, 
+                tint = Color.Gray,
+                modifier = Modifier.size(32.dp)
+            )
+        }
+        
+        Box(
+            modifier = Modifier.height(140.dp).width(80.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column {
+                Box(modifier = Modifier.width(65.dp).height(2.dp).background(accentColor))
+                Spacer(modifier = Modifier.height(48.dp))
+                Box(modifier = Modifier.width(65.dp).height(2.dp).background(accentColor))
+            }
+            
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = if (selectedIndex > 0) items[selectedIndex - 1] else "",
+                    color = Color.White.copy(alpha = 0.3f),
+                    fontSize = 20.sp
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = items[selectedIndex],
+                    color = Color.White,
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.Normal
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = if (selectedIndex < items.size - 1) items[selectedIndex + 1] else "",
+                    color = Color.White.copy(alpha = 0.3f),
+                    fontSize = 20.sp
+                )
+            }
+        }
+
+        IconButton(
+            onClick = { if (selectedIndex < items.size - 1) onItemSelected(selectedIndex + 1) },
+            modifier = Modifier.size(40.dp)
+        ) {
+            Icon(
+                Icons.Default.ArrowDropDown, 
+                contentDescription = null, 
+                tint = Color.Gray,
+                modifier = Modifier.size(32.dp)
+            )
+        }
+    }
+}
+
 // ── Normal timing ─────────────────────────────────────────────────────────────
+@Composable
+fun InlineYearSelector(
+    selectedYear: Int,
+    minimumYear: Int,
+    onYearSelected: (Int) -> Unit,
+    accentColor: Color
+) {
+    val years = (minimumYear..minimumYear + 15).toList()
+    val listState = rememberLazyListState()
+
+    // Auto-scroll to selected year on first composition
+    LaunchedEffect(selectedYear) {
+        val index = years.indexOf(selectedYear).coerceAtLeast(0)
+        listState.animateScrollToItem(index)
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text      = "Select Year",
+            color     = Color.White.copy(alpha = 0.5f),
+            fontSize  = 11.sp,
+            fontWeight = FontWeight.Medium,
+            letterSpacing = 1.sp
+        )
+
+        LazyRow(
+            state                  = listState,
+            horizontalArrangement  = Arrangement.spacedBy(8.dp),
+            contentPadding         = PaddingValues(horizontal = 4.dp)
+        ) {
+            items(years) { year ->
+                val isSelected = year == selectedYear
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (isSelected) accentColor
+                            else Color.White.copy(alpha = 0.08f)
+                        )
+                        .border(
+                            width = if (isSelected) 0.dp else 1.dp,
+                            color = Color.White.copy(alpha = 0.12f),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        .clickable { onYearSelected(year) }
+                        .padding(horizontal = 18.dp, vertical = 10.dp)
+                ) {
+                    Text(
+                        text       = year.toString(),
+                        color      = if (isSelected) Color.Black else Color.White.copy(alpha = 0.7f),
+                        fontSize   = 14.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                    )
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NormalTimingSection(
@@ -753,28 +1004,6 @@ fun NormalTimingSection(
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
 
-    val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = selectedDate,
-        selectableDates           = object : SelectableDates {
-            override fun isSelectableDate(utcTimeMillis: Long): Boolean {
-                val today = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
-                    set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
-                    set(Calendar.SECOND, 0);      set(Calendar.MILLISECOND, 0)
-                }.timeInMillis
-                return utcTimeMillis > today
-            }
-            override fun isSelectableYear(year: Int): Boolean =
-                year >= Calendar.getInstance().get(Calendar.YEAR)
-        }
-    )
-
-    // Keep datePickerState in sync when a preset button changes selectedDate
-    LaunchedEffect(selectedDate) {
-        if (datePickerState.selectedDateMillis != selectedDate) {
-            datePickerState.selectedDateMillis = selectedDate
-        }
-    }
-
     val timePickerState = rememberTimePickerState(
         initialHour   = Calendar.getInstance().apply { timeInMillis = selectedDate }
             .get(Calendar.HOUR_OF_DAY),
@@ -783,50 +1012,16 @@ fun NormalTimingSection(
     )
 
     if (showDatePicker) {
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    datePickerState.selectedDateMillis?.let { picked ->
-                        val cal    = Calendar.getInstance().apply { timeInMillis = picked }
-                        val oldCal = Calendar.getInstance().apply { timeInMillis = selectedDate }
-                        cal.set(Calendar.HOUR_OF_DAY, oldCal.get(Calendar.HOUR_OF_DAY))
-                        cal.set(Calendar.MINUTE,      oldCal.get(Calendar.MINUTE))
-                        onDateSelected(cal.timeInMillis)
-                    }
-                    showDatePicker = false
-                    showTimePicker = true
-                }) { Text("Next", color = accentColor) }
+        DrumDatePickerDialog(
+            initialDate = selectedDate,
+            onConfirm = { picked ->
+                onDateSelected(picked)
+                showDatePicker = false
+                showTimePicker = true
             },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text("Cancel", color = Color.White.copy(alpha = 0.6f))
-                }
-            },
-            colors = DatePickerDefaults.colors(containerColor = Color(0xFF1A1A1A))
-        ) {
-            DatePicker(
-                state          = datePickerState,
-                showModeToggle = true,
-                colors         = DatePickerDefaults.colors(
-                    containerColor            = Color.Transparent,
-                    titleContentColor         = Color.White,
-                    headlineContentColor      = Color.White,
-                    weekdayContentColor       = Color.White.copy(alpha = 0.5f),
-                    subheadContentColor       = Color.White.copy(alpha = 0.5f),
-                    yearContentColor          = Color.White.copy(alpha = 0.5f),
-                    currentYearContentColor   = accentColor,
-                    selectedYearContentColor  = Color.White,
-                    selectedYearContainerColor = accentColor,
-                    dayContentColor           = Color.White,
-                    disabledDayContentColor   = Color.White.copy(alpha = 0.15f),
-                    selectedDayContentColor   = Color.White,
-                    selectedDayContainerColor = accentColor,
-                    todayContentColor         = accentColor,
-                    todayDateBorderColor      = accentColor
-                )
-            )
-        }
+            onDismiss = { showDatePicker = false },
+            accentColor = accentColor
+        )
     }
 
     if (showTimePicker) {
@@ -845,12 +1040,55 @@ fun NormalTimingSection(
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+        val calendar = remember(selectedDate) {
+            Calendar.getInstance().apply { timeInMillis = selectedDate }
+        }
+        val currentYear = Calendar.getInstance().get(Calendar.YEAR)
+
         Text(
             "When should this capsule reveal itself?",
             color      = Color.White,
             fontSize   = 20.sp,
             fontWeight = FontWeight.Bold
         )
+
+        // Year selection card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors   = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+            shape    = RoundedCornerShape(16.dp),
+            border   = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Column {
+                    Text(
+                        "Unlock Year",
+                        color    = Color.White.copy(alpha = 0.6f),
+                        fontSize = 12.sp
+                    )
+                    Text(
+                        text       = "${calendar.get(Calendar.YEAR)}",
+                        color      = Color.White,
+                        fontSize   = 28.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                }
+
+                InlineYearSelector(
+                    selectedYear   = calendar.get(Calendar.YEAR),
+                    minimumYear    = currentYear,
+                    onYearSelected = { newYear ->
+                        val cal = Calendar.getInstance().apply { timeInMillis = selectedDate }
+                        cal.set(Calendar.YEAR, newYear)
+                        onDateSelected(cal.timeInMillis)
+                    },
+                    accentColor    = accentColor
+                )
+            }
+        }
 
         val presets = listOf(
             "1 Day"    to 1000L * 60 * 60 * 24,
@@ -907,8 +1145,31 @@ fun NormalTimingSection(
                 modifier           = Modifier.size(18.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Pick Custom Date & Time: $dateStr", color = Color.White)
+            Column {
+                Text(
+                    text      = "📅  Pick Date & Time",
+                    color     = Color.White,
+                    fontSize  = 14.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text     = dateStr,
+                    color    = accentColor,
+                    fontSize = 12.sp
+                )
+            }
         }
+
+        val fullDate = SimpleDateFormat(
+            "MMMM dd, yyyy 'at' hh:mm a", Locale.getDefault()
+        ).format(Date(selectedDate))
+        Text(
+            text      = "Capsule will reveal on: $fullDate",
+            color     = accentColor.copy(alpha = 0.8f),
+            fontSize  = 12.sp,
+            textAlign = TextAlign.Center,
+            modifier  = Modifier.fillMaxWidth()
+        )
     }
 }
 
@@ -925,28 +1186,6 @@ fun OtherBirthdayTimingSection(
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
 
-    val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = selectedDate,
-        selectableDates           = object : SelectableDates {
-            override fun isSelectableDate(utcTimeMillis: Long): Boolean {
-                val today = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
-                    set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
-                    set(Calendar.SECOND, 0);      set(Calendar.MILLISECOND, 0)
-                }.timeInMillis
-                return utcTimeMillis > today
-            }
-            override fun isSelectableYear(year: Int): Boolean =
-                year >= Calendar.getInstance().get(Calendar.YEAR)
-        }
-    )
-
-    // Keep datePickerState in sync when a preset button changes selectedDate
-    LaunchedEffect(selectedDate) {
-        if (datePickerState.selectedDateMillis != selectedDate) {
-            datePickerState.selectedDateMillis = selectedDate
-        }
-    }
-
     val timePickerState = rememberTimePickerState(
         initialHour   = Calendar.getInstance().apply { timeInMillis = selectedDate }
             .get(Calendar.HOUR_OF_DAY),
@@ -955,50 +1194,16 @@ fun OtherBirthdayTimingSection(
     )
 
     if (showDatePicker) {
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    datePickerState.selectedDateMillis?.let { picked ->
-                        val cal    = Calendar.getInstance().apply { timeInMillis = picked }
-                        val oldCal = Calendar.getInstance().apply { timeInMillis = selectedDate }
-                        cal.set(Calendar.HOUR_OF_DAY, oldCal.get(Calendar.HOUR_OF_DAY))
-                        cal.set(Calendar.MINUTE,      oldCal.get(Calendar.MINUTE))
-                        onDateSelected(cal.timeInMillis)
-                    }
-                    showDatePicker = false
-                    showTimePicker = true
-                }) { Text("Next", color = accentColor) }
+        DrumDatePickerDialog(
+            initialDate = selectedDate,
+            onConfirm = { picked ->
+                onDateSelected(picked)
+                showDatePicker = false
+                showTimePicker = true
             },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text("Cancel", color = Color.White.copy(alpha = 0.6f))
-                }
-            },
-            colors = DatePickerDefaults.colors(containerColor = Color(0xFF1A1A1A))
-        ) {
-            DatePicker(
-                state          = datePickerState,
-                showModeToggle = true,
-                colors         = DatePickerDefaults.colors(
-                    containerColor            = Color.Transparent,
-                    titleContentColor         = Color.White,
-                    headlineContentColor      = Color.White,
-                    weekdayContentColor       = Color.White.copy(alpha = 0.5f),
-                    subheadContentColor       = Color.White.copy(alpha = 0.5f),
-                    yearContentColor          = Color.White.copy(alpha = 0.5f),
-                    currentYearContentColor   = accentColor,
-                    selectedYearContentColor  = Color.White,
-                    selectedYearContainerColor = accentColor,
-                    dayContentColor           = Color.White,
-                    disabledDayContentColor   = Color.White.copy(alpha = 0.15f),
-                    selectedDayContentColor   = Color.White,
-                    selectedDayContainerColor = accentColor,
-                    todayContentColor         = accentColor,
-                    todayDateBorderColor      = accentColor
-                )
-            )
-        }
+            onDismiss = { showDatePicker = false },
+            accentColor = accentColor
+        )
     }
 
     if (showTimePicker) {
@@ -1017,6 +1222,11 @@ fun OtherBirthdayTimingSection(
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+        val calendar = remember(selectedDate) {
+            Calendar.getInstance().apply { timeInMillis = selectedDate }
+        }
+        val currentYear = Calendar.getInstance().get(Calendar.YEAR)
+
         Text(
             text = if (isBirthdayMode) "When is their birthday?" else "When should this capsule reveal itself?",
             color      = Color.White,
@@ -1042,6 +1252,44 @@ fun OtherBirthdayTimingSection(
             }
         }
 
+        // Year selection card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors   = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+            shape    = RoundedCornerShape(16.dp),
+            border   = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Column {
+                    Text(
+                        "Unlock Year",
+                        color    = Color.White.copy(alpha = 0.6f),
+                        fontSize = 12.sp
+                    )
+                    Text(
+                        text       = "${calendar.get(Calendar.YEAR)}",
+                        color      = Color.White,
+                        fontSize   = 28.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                }
+
+                InlineYearSelector(
+                    selectedYear   = calendar.get(Calendar.YEAR),
+                    minimumYear    = currentYear,
+                    onYearSelected = { newYear ->
+                        val cal = Calendar.getInstance().apply { timeInMillis = selectedDate }
+                        cal.set(Calendar.YEAR, newYear)
+                        onDateSelected(cal.timeInMillis)
+                    },
+                    accentColor    = accentColor
+                )
+            }
+        }
+
         val presets = listOf(
             "1 Day"    to 1000L * 60 * 60 * 24,
             "1 Week"   to 1000L * 60 * 60 * 24 * 7,
@@ -1097,8 +1345,31 @@ fun OtherBirthdayTimingSection(
                 modifier           = Modifier.size(18.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Pick Custom Date & Time: $dateStr", color = Color.White)
+            Column {
+                Text(
+                    text      = "📅  Pick Date & Time",
+                    color     = Color.White,
+                    fontSize  = 14.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text     = dateStr,
+                    color    = accentColor,
+                    fontSize = 12.sp
+                )
+            }
         }
+
+        val fullDate = SimpleDateFormat(
+            "MMMM dd, yyyy 'at' hh:mm a", Locale.getDefault()
+        ).format(Date(selectedDate))
+        Text(
+            text      = "Capsule will reveal on: $fullDate",
+            color     = accentColor.copy(alpha = 0.8f),
+            fontSize  = 12.sp,
+            textAlign = TextAlign.Center,
+            modifier  = Modifier.fillMaxWidth()
+        )
     }
 }
 
