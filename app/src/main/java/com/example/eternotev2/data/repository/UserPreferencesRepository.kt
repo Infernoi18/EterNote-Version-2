@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import com.example.eternotev2.di.PreferencesKeys
+import com.example.eternotev2.ui.theme.UserThemePreference
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -15,6 +16,26 @@ import javax.inject.Singleton
 class UserPreferencesRepository @Inject constructor(
     private val dataStore: DataStore<Preferences>
 ) {
+
+    val themePreference: Flow<UserThemePreference> = dataStore.data
+        .catch { e ->
+            if (e is IOException)
+                emit(androidx.datastore.preferences.core.emptyPreferences())
+            else throw e
+        }
+        .map { prefs ->
+            when (prefs[PreferencesKeys.THEME_PREFERENCE]) {
+                "LIGHT"  -> UserThemePreference.LIGHT
+                "DARK"   -> UserThemePreference.DARK
+                else     -> UserThemePreference.SYSTEM
+            }
+        }
+
+    suspend fun setThemePreference(pref: UserThemePreference) {
+        dataStore.edit { prefs ->
+            prefs[PreferencesKeys.THEME_PREFERENCE] = pref.name
+        }
+    }
 
     // ── Onboarding ────────────────────────────────────────────────────────────
     val isOnboardingComplete: Flow<Boolean> = dataStore.data

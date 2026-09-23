@@ -11,4 +11,5 @@ object PreferencesKeys {
     val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
     val SELECTED_THEME       = stringPreferencesKey("selected_theme")
     val REMINDER_FREQUENCY   = stringPreferencesKey("reminder_frequency")
+    val THEME_PREFERENCE = stringPreferencesKey("theme_preference")
 }

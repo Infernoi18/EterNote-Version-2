@@ -31,6 +31,7 @@ fun EternoteBottomBar(
 ) {
     Box(
         modifier = modifier
+            .navigationBarsPadding()
             .fillMaxWidth()
             .padding(16.dp)
             .height(72.dp)

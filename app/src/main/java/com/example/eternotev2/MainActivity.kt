@@ -1,21 +1,24 @@
 package com.example.eternotev2
 
+import android.Manifest
+import android.app.Activity
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.activity.compose.BackHandler
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.graphics.Color
-import android.Manifest
-import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.eternotev2.navigation.BottomNavTab
@@ -24,6 +27,7 @@ import com.example.eternotev2.navigation.Routes
 import com.example.eternotev2.ui.components.common.EternoteBottomBar
 import com.example.eternotev2.ui.theme.DeepVoid
 import com.example.eternotev2.ui.theme.EternoteV2Theme
+import com.example.eternotev2.ui.theme.UserThemePreference
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -32,13 +36,46 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         enableEdgeToEdge()
 
         val initialId = intent.getLongExtra("unlock_capsule_id", -1L)
         unlockCapsuleIdState.longValue = initialId
 
         setContent {
-            EternoteV2Theme {
+            val prefsRepo = remember {
+                (application as com.example.eternotev2.EternoteApplication)
+                    .userPreferencesRepository
+            }
+            val themePreference by prefsRepo.themePreference
+                .collectAsState(initial = UserThemePreference.SYSTEM)
+
+            val view = LocalView.current
+            SideEffect {
+                val window = (view.context as Activity).window
+                WindowCompat.getInsetsController(window, view).apply {
+                    // Status bar icons: false = white icons (correct for dark bg)
+                    isAppearanceLightStatusBars = false
+
+                    // Nav bar icons: false = white icons (correct for dark/navy bg)
+                    // This makes back button, home pill, recents WHITE
+                    // so they are always visible on our dark backgrounds.
+                    isAppearanceLightNavigationBars = false
+                }
+
+                // Force navigation bar to be transparent so our
+                // background color shows through and nav icons
+                // contrast against it via the flag above.
+                window.navigationBarColor =
+                    android.graphics.Color.TRANSPARENT
+
+                // Required on API 29+ to allow drawing behind nav bar
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    window.isNavigationBarContrastEnforced = false
+                }
+            }
+
+            EternoteV2Theme(themePreference = themePreference) {
                 EternoteApp(
                     unlockCapsuleId = unlockCapsuleIdState.longValue,
                     onNotificationHandled = { unlockCapsuleIdState.longValue = -1L }

@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
+import com.example.eternotev2.ui.theme.LocalAmbientAlpha
 import com.example.eternotev2.ui.theme.MoodColors
 import kotlin.random.Random
 
@@ -17,6 +18,7 @@ fun ParticleField(
     colors: MoodColors,
     particleCount: Int = 20
 ) {
+    val ambientAlpha = LocalAmbientAlpha.current
     val infiniteTransition = rememberInfiniteTransition(label = "ParticleField")
     
     val particles = remember {
@@ -53,9 +55,26 @@ fun ParticleField(
                     
                     val alphaFade = (0.5f + 0.5f * kotlin.math.sin(p * 2 * Math.PI.toFloat() + particle.baseAlpha * 10f)).coerceIn(0f, 1f)
                     
+                    val alpha = alphaFade * particle.baseAlpha
+                    
+                    // Core dot
                     drawCircle(
-                        color = color.copy(alpha = alphaFade * particle.baseAlpha),
+                        color = color.copy(alpha = alpha * ambientAlpha),
                         radius = particle.size,
+                        center = Offset(particle.x * size.width, adjustedY * size.height)
+                    )
+
+                    // Glow halo
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                color.copy(alpha = alpha * 0.4f * ambientAlpha),
+                                Color.Transparent
+                            ),
+                            center = Offset(particle.x * size.width, adjustedY * size.height),
+                            radius = particle.size * 3f
+                        ),
+                        radius = particle.size * 3f,
                         center = Offset(particle.x * size.width, adjustedY * size.height)
                     )
                 }
@@ -68,6 +87,7 @@ fun StarField(
     modifier: Modifier = Modifier,
     starCount: Int = 50
 ) {
+    val ambientAlpha = LocalAmbientAlpha.current
     val stars = remember {
         List(starCount) {
             Triple(
@@ -82,9 +102,9 @@ fun StarField(
         modifier = modifier
             .fillMaxSize()
             .drawBehind {
-                stars.forEach { (pos, size, alpha) ->
+                stars.forEach { (pos, size, baseAlpha) ->
                     drawCircle(
-                        color = Color.White.copy(alpha = alpha),
+                        color = Color.White.copy(alpha = baseAlpha * ambientAlpha),
                         radius = size,
                         center = Offset(pos.x * this.size.width, pos.y * this.size.height)
                     )
@@ -99,6 +119,7 @@ fun GlowOrb(
     color: Color,
     sizePx: Float = 300f
 ) {
+    val ambientAlpha = LocalAmbientAlpha.current
     val infiniteTransition = rememberInfiniteTransition(label = "GlowOrb")
     
     val pulse = infiniteTransition.animateFloat(
@@ -127,12 +148,12 @@ fun GlowOrb(
                 translationX = translationXAnim.value
                 scaleX = pulse.value
                 scaleY = pulse.value
-                alpha = 0.7f
+                alpha = 0.7f * ambientAlpha
             }
             .drawBehind {
                 drawCircle(
                     brush = Brush.radialGradient(
-                        colors = listOf(color.copy(alpha = 0.15f), Color.Transparent),
+                        colors = listOf(color.copy(alpha = 0.15f * ambientAlpha), Color.Transparent),
                         center = center,
                         radius = sizePx
                     ),

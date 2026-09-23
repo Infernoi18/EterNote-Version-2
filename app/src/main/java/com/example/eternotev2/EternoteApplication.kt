@@ -15,6 +15,10 @@ class EternoteApplication : Application(), Configuration.Provider {
     @Inject
     lateinit var workerFactory: HiltWorkerFactory
 
+    @Inject
+    lateinit var userPreferencesRepository:
+        com.example.eternotev2.data.repository.UserPreferencesRepository
+
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
             .setWorkerFactory(workerFactory)

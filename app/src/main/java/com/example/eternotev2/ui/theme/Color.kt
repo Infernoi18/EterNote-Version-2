@@ -11,6 +11,23 @@ val SurfaceElevated = Color(0xFF1A1628)
 val SurfaceGlass    = Color(0x1AFFFFFF)   // glassmorphism base
 val SurfaceGlassHigh= Color(0x26FFFFFF)
 
+// ── Light Mode Backgrounds ────────────────────────────────────
+val LightBgPrimary      = Color(0xFF1A1535)   // deep navy-indigo
+val LightBgSecondary    = Color(0xFF231D45)   // slightly lighter indigo
+val LightBgSurface      = Color(0xFF2D2660)   // muted violet-navy
+val LightBgElevated     = Color(0xFF342D6E)   // card surface
+val LightBgGlass        = Color(0x1AFFFFFF)   // same glass alpha as dark
+val LightBgGlassHigh    = Color(0x26FFFFFF)
+
+// ── Light Mode Text ───────────────────────────────────────────
+val LightTextPrimary    = Color(0xFFF0EEFF)   // same as dark — white
+val LightTextSecondary  = Color(0xFFB8B0D8)
+val LightTextTertiary   = Color(0xFF7A72A0)
+
+// ── Light Mode Borders ────────────────────────────────────────
+val LightGlassBorder    = Color(0x40FFFFFF)
+val LightGlassBorderSoft = Color(0x22FFFFFF)
+
 // ── Primary Accent — Cosmic Violet ───────────────────────────────────────────
 val CosmicViolet        = Color(0xFF7B5CF0)
 val CosmicVioletLight   = Color(0xFF9D7FF5)
