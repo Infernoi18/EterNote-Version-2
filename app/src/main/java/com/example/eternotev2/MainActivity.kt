@@ -19,8 +19,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.eternotev2.data.repository.UserPreferencesRepository
 import com.example.eternotev2.navigation.BottomNavTab
 import com.example.eternotev2.navigation.EternoteNavGraph
 import com.example.eternotev2.navigation.Routes
@@ -43,37 +45,13 @@ class MainActivity : ComponentActivity() {
         unlockCapsuleIdState.longValue = initialId
 
         setContent {
-            val prefsRepo = remember {
-                (application as com.example.eternotev2.EternoteApplication)
-                    .userPreferencesRepository
-            }
-            val themePreference by prefsRepo.themePreference
-                .collectAsState(initial = UserThemePreference.SYSTEM)
+            val userPrefsRepository: UserPreferencesRepository =
+                (application as EternoteApplication).userPreferencesRepository
 
-            val view = LocalView.current
-            SideEffect {
-                val window = (view.context as Activity).window
-                WindowCompat.getInsetsController(window, view).apply {
-                    // Status bar icons: false = white icons (correct for dark bg)
-                    isAppearanceLightStatusBars = false
-
-                    // Nav bar icons: false = white icons (correct for dark/navy bg)
-                    // This makes back button, home pill, recents WHITE
-                    // so they are always visible on our dark backgrounds.
-                    isAppearanceLightNavigationBars = false
-                }
-
-                // Force navigation bar to be transparent so our
-                // background color shows through and nav icons
-                // contrast against it via the flag above.
-                window.navigationBarColor =
-                    android.graphics.Color.TRANSPARENT
-
-                // Required on API 29+ to allow drawing behind nav bar
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    window.isNavigationBarContrastEnforced = false
-                }
-            }
+            val themePreference by userPrefsRepository.themePreference
+                .collectAsStateWithLifecycle(
+                    initialValue = UserThemePreference.SYSTEM
+                )
 
             EternoteV2Theme(themePreference = themePreference) {
                 EternoteApp(

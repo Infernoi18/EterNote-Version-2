@@ -21,6 +21,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.BrightnessAuto
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Icon
@@ -127,34 +130,31 @@ fun SettingsScreen(
                 GlassCard(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         ThemeOptionRow(
-                            title = "System Default",
+                            title    = "System Default",
                             subtitle = "Follows your device setting",
+                            icon     = Icons.Filled.BrightnessAuto,
                             selected = uiState.themePreference == UserThemePreference.SYSTEM,
-                            onClick = {
-                                coroutineScope.launch {
-                                    viewModel.setThemePreference(UserThemePreference.SYSTEM)
-                                }
-                            }
+                            onClick  = { coroutineScope.launch {
+                                viewModel.setThemePreference(UserThemePreference.SYSTEM)
+                            }}
                         )
                         ThemeOptionRow(
-                            title = "Dark Mode",
+                            title    = "Dark Mode",
                             subtitle = "Deep space — always dark",
+                            icon     = Icons.Filled.DarkMode,
                             selected = uiState.themePreference == UserThemePreference.DARK,
-                            onClick = {
-                                coroutineScope.launch {
-                                    viewModel.setThemePreference(UserThemePreference.DARK)
-                                }
-                            }
+                            onClick  = { coroutineScope.launch {
+                                viewModel.setThemePreference(UserThemePreference.DARK)
+                            }}
                         )
                         ThemeOptionRow(
-                            title = "Light Mode",
+                            title    = "Light Mode",
                             subtitle = "Midnight navy — lighter feel",
+                            icon     = Icons.Filled.LightMode,
                             selected = uiState.themePreference == UserThemePreference.LIGHT,
-                            onClick = {
-                                coroutineScope.launch {
-                                    viewModel.setThemePreference(UserThemePreference.LIGHT)
-                                }
-                            }
+                            onClick  = { coroutineScope.launch {
+                                viewModel.setThemePreference(UserThemePreference.LIGHT)
+                            }}
                         )
                     }
                 }
@@ -276,6 +276,7 @@ private fun ThemeOptionRow(
     title: String,
     subtitle: String,
     selected: Boolean,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
     onClick: () -> Unit
 ) {
     Row(
@@ -287,25 +288,56 @@ private fun ThemeOptionRow(
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Icon
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(
+                    if (selected) CosmicViolet.copy(alpha = 0.15f)
+                    else SurfaceGlass
+                )
+        ) {
+            Icon(
+                imageVector        = icon,
+                contentDescription = null,
+                tint               = if (selected) CosmicViolet else TextTertiary,
+                modifier           = Modifier.size(18.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        // Text column
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = title, fontSize = 16.sp, color = TextPrimary, fontWeight = FontWeight.SemiBold)
+            Text(text = subtitle, fontSize = 12.sp, color = TextSecondary)
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
         // Radio indicator
         Box(
+            contentAlignment = Alignment.Center,
             modifier = Modifier
-                .size(20.dp)
+                .size(22.dp)
                 .border(
                     width = 2.dp,
                     color = if (selected) CosmicViolet else TextSecondary,
                     shape = CircleShape
                 )
-                .padding(4.dp)
-                .background(
-                    color = if (selected) CosmicViolet else Color.Transparent,
-                    shape = CircleShape
+        ) {
+            if (selected) {
+                Box(
+                    modifier = Modifier
+                        .size(11.dp)
+                        .background(
+                            color = CosmicViolet,
+                            shape = CircleShape
+                        )
                 )
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, fontSize = 16.sp, color = TextPrimary, fontWeight = FontWeight.SemiBold)
-            Text(text = subtitle, fontSize = 12.sp, color = TextSecondary)
+            }
         }
     }
 }
