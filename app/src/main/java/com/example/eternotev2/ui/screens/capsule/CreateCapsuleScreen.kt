@@ -55,6 +55,26 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
+private val TomorrowOrLaterDates = object : SelectableDates {
+    override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+        // Get start of tomorrow in UTC
+        val tomorrowStart = Calendar.getInstance(
+            TimeZone.getTimeZone("UTC")
+        ).apply {
+            add(Calendar.DAY_OF_YEAR, 1)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE,      0)
+            set(Calendar.SECOND,      0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        return utcTimeMillis >= tomorrowStart
+    }
+
+    override fun isSelectableYear(year: Int): Boolean =
+        year >= Calendar.getInstance().get(Calendar.YEAR)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateCapsuleScreen(
     onCapsuleCreated: () -> Unit,
@@ -1033,17 +1053,60 @@ fun NormalTimingSection(
             .get(Calendar.MINUTE)
     )
 
+    val tomorrowMillis = Calendar.getInstance().apply {
+        add(Calendar.DAY_OF_YEAR, 1)
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE,      0)
+        set(Calendar.SECOND,      0)
+        set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+
+    val safeInitialDate = if (selectedDate <= System.currentTimeMillis())
+        tomorrowMillis
+    else
+        selectedDate
+
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = safeInitialDate,
+        selectableDates           = TomorrowOrLaterDates
+    )
+
     if (showDatePicker) {
-        DrumDatePickerDialog(
-            initialDate = selectedDate,
-            onConfirm = { picked ->
-                onDateSelected(picked)
-                showDatePicker = false
-                showTimePicker = true
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { onDateSelected(it) }
+                        showDatePicker = false
+                        showTimePicker = true
+                    }
+                ) {
+                    Text("OK", color = accentColor)
+                }
             },
-            onDismiss = { showDatePicker = false },
-            accentColor = accentColor
-        )
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancel", color = Color.White.copy(alpha = 0.6f))
+                }
+            },
+            colors = DatePickerDefaults.colors(
+                containerColor = Color(0xFF1A1A1A)
+            )
+        ) {
+            DatePicker(
+                state = datePickerState,
+                colors = DatePickerDefaults.colors(
+                    containerColor = Color(0xFF1A1A1A),
+                    titleContentColor = Color.White,
+                    headlineContentColor = Color.White,
+                    selectedDayContainerColor = accentColor,
+                    selectedDayContentColor = Color.Black,
+                    todayContentColor = accentColor,
+                    todayDateBorderColor = accentColor
+                )
+            )
+        }
     }
 
     if (showTimePicker) {
@@ -1215,17 +1278,60 @@ fun OtherBirthdayTimingSection(
             .get(Calendar.MINUTE)
     )
 
+    val tomorrowMillis = Calendar.getInstance().apply {
+        add(Calendar.DAY_OF_YEAR, 1)
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE,      0)
+        set(Calendar.SECOND,      0)
+        set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+
+    val safeInitialDate = if (selectedDate <= System.currentTimeMillis())
+        tomorrowMillis
+    else
+        selectedDate
+
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = safeInitialDate,
+        selectableDates           = TomorrowOrLaterDates
+    )
+
     if (showDatePicker) {
-        DrumDatePickerDialog(
-            initialDate = selectedDate,
-            onConfirm = { picked ->
-                onDateSelected(picked)
-                showDatePicker = false
-                showTimePicker = true
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { onDateSelected(it) }
+                        showDatePicker = false
+                        showTimePicker = true
+                    }
+                ) {
+                    Text("OK", color = accentColor)
+                }
             },
-            onDismiss = { showDatePicker = false },
-            accentColor = accentColor
-        )
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancel", color = Color.White.copy(alpha = 0.6f))
+                }
+            },
+            colors = DatePickerDefaults.colors(
+                containerColor = Color(0xFF1A1A1A)
+            )
+        ) {
+            DatePicker(
+                state = datePickerState,
+                colors = DatePickerDefaults.colors(
+                    containerColor = Color(0xFF1A1A1A),
+                    titleContentColor = Color.White,
+                    headlineContentColor = Color.White,
+                    selectedDayContainerColor = accentColor,
+                    selectedDayContentColor = Color.Black,
+                    todayContentColor = accentColor,
+                    todayDateBorderColor = accentColor
+                )
+            )
+        }
     }
 
     if (showTimePicker) {
