@@ -105,13 +105,68 @@ fun HomeScreen(
                 }
 
                 // Birthday Highlight
-                uiState.upcomingBirthdayCapsule?.let { capsule ->
+                if (uiState.hasSelfBirthday || uiState.hasFriendBirthday) {
                     item {
-                        BirthdayHighlight(
-                            capsule = capsule,
-                            onClick = { onCapsuleClick(capsule.id) },
-                            accentColor = moodColors(capsule.mood).primary
-                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Birthday Capsules",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = Color.White.copy(alpha = 0.6f),
+                                    fontWeight = FontWeight.Bold
+                                )
+                                
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    BirthdayFilterChip(
+                                        selected = uiState.birthdayFilter == BirthdayFilter.ALL,
+                                        onClick = { viewModel.updateBirthdayFilter(BirthdayFilter.ALL) },
+                                        label = "All",
+                                        accentColor = animatedColors.primary
+                                    )
+                                    if (uiState.hasSelfBirthday) {
+                                        BirthdayFilterChip(
+                                            selected = uiState.birthdayFilter == BirthdayFilter.MINE,
+                                            onClick = { viewModel.updateBirthdayFilter(BirthdayFilter.MINE) },
+                                            label = "Mine",
+                                            accentColor = animatedColors.primary
+                                        )
+                                    }
+                                    if (uiState.hasFriendBirthday) {
+                                        BirthdayFilterChip(
+                                            selected = uiState.birthdayFilter == BirthdayFilter.FRIENDS,
+                                            onClick = { viewModel.updateBirthdayFilter(BirthdayFilter.FRIENDS) },
+                                            label = "Friends",
+                                            accentColor = animatedColors.primary
+                                        )
+                                    }
+                                }
+                            }
+                            
+                            uiState.upcomingBirthdayCapsule?.let { capsule ->
+                                BirthdayHighlight(
+                                    capsule = capsule,
+                                    onClick = { onCapsuleClick(capsule.id) },
+                                    accentColor = moodColors(capsule.mood).primary
+                                )
+                            } ?: Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(80.dp)
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(Color.White.copy(alpha = 0.05f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "No upcoming birthdays in this category",
+                                    color = Color.White.copy(alpha = 0.4f),
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -463,6 +518,38 @@ fun CapsuleCard(
             GlassTag(
                 text = capsule.mood.label,
                 color = moodColors(capsule.mood).primary
+            )
+        }
+    }
+}
+
+@Composable
+fun BirthdayFilterChip(
+    selected: Boolean,
+    onClick: () -> Unit,
+    label: String,
+    accentColor: Color
+) {
+    Surface(
+        selected = selected,
+        onClick = onClick,
+        shape = CircleShape,
+        color = if (selected) accentColor.copy(alpha = 0.2f) else Color.Transparent,
+        border = BorderStroke(
+            1.dp, 
+            if (selected) accentColor else Color.White.copy(alpha = 0.2f)
+        ),
+        modifier = Modifier.height(28.dp)
+    ) {
+        Box(
+            modifier = Modifier.padding(horizontal = 12.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (selected) Color.White else Color.White.copy(alpha = 0.6f),
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
             )
         }
     }

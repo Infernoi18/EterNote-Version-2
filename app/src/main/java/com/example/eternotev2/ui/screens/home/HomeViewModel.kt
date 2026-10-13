@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.eternotev2.data.auth.SessionManager
 import com.example.eternotev2.data.model.Capsule
+import com.example.eternotev2.data.model.CapsuleType
 import com.example.eternotev2.data.repository.CapsuleRepository
 import com.example.eternotev2.data.repository.UserRepository
 import com.example.eternotev2.ui.theme.Mood
@@ -16,6 +17,8 @@ import javax.inject.Inject
 enum class SortOrder { DATE_ASC, DATE_DESC, NAME_ASC, NAME_DESC }
 
 enum class FilterStatus { ALL, OPENED, UNOPENED }
+
+enum class BirthdayFilter { ALL, MINE, FRIENDS }
 
 data class CapsuleFilters(
     val status: FilterStatus = FilterStatus.ALL,
@@ -31,7 +34,10 @@ data class HomeUiState(
     val filteredCapsules: List<Capsule> = emptyList(),
     val filters: CapsuleFilters = CapsuleFilters(),
     val sortOrder: SortOrder = SortOrder.DATE_DESC,
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    val birthdayFilter: BirthdayFilter = BirthdayFilter.ALL,
+    val hasSelfBirthday: Boolean = false,
+    val hasFriendBirthday: Boolean = false
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -70,26 +76,47 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun loadCapsules() {
-        capsuleRepository.getAllCapsules()
-            .onEach { capsules ->
-                val upcomingBirthday = capsules
-                    .filter { !it.isUnlocked && it.capsuleType != com.example.eternotev2.data.model.CapsuleType.NORMAL }
-                    .minByOrNull { it.unlockAt }
-
-                _uiState.update { state ->
-                    state.copy(
-                        capsules = capsules,
-                        upcomingBirthdayCapsule = upcomingBirthday,
-                        filteredCapsules = applyFilterAndSort(capsules, state.filters, state.sortOrder),
-                        isLoading = false
-                    )
+        combine(
+            capsuleRepository.getAllCapsules(),
+            _uiState.map { it.birthdayFilter }.distinctUntilChanged()
+        ) { capsules, filter ->
+            val upcomingBirthdays = capsules.filter { !it.isUnlocked && it.capsuleType != CapsuleType.NORMAL }
+            val hasSelf = upcomingBirthdays.any { it.capsuleType == CapsuleType.BIRTHDAY_SELF }
+            val hasFriend = upcomingBirthdays.any { it.capsuleType == CapsuleType.BIRTHDAY_OTHER }
+            
+            val displayBirthday = upcomingBirthdays
+                .filter { 
+                    when (filter) {
+                        BirthdayFilter.ALL -> true
+                        BirthdayFilter.MINE -> it.capsuleType == CapsuleType.BIRTHDAY_SELF
+                        BirthdayFilter.FRIENDS -> it.capsuleType == CapsuleType.BIRTHDAY_OTHER
+                    }
                 }
+                .minByOrNull { it.unlockAt }
+            
+            Triple(capsules, displayBirthday, Pair(hasSelf, hasFriend))
+        }
+        .onEach { (capsules, upcoming, flags) ->
+            _uiState.update { state ->
+                state.copy(
+                    capsules = capsules,
+                    upcomingBirthdayCapsule = upcoming,
+                    hasSelfBirthday = flags.first,
+                    hasFriendBirthday = flags.second,
+                    filteredCapsules = applyFilterAndSort(capsules, state.filters, state.sortOrder),
+                    isLoading = false
+                )
             }
-            .launchIn(viewModelScope)
+        }
+        .launchIn(viewModelScope)
     }
 
     fun onMoodChanged(newMood: Mood) {
         _uiState.update { it.copy(currentMood = newMood) }
+    }
+
+    fun updateBirthdayFilter(filter: BirthdayFilter) {
+        _uiState.update { it.copy(birthdayFilter = filter) }
     }
 
     fun updateFilters(newFilters: CapsuleFilters) {
