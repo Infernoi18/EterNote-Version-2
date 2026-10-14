@@ -15,8 +15,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.pager.VerticalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.shape.CircleShape
@@ -36,7 +34,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -57,17 +54,13 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 private val TomorrowOrLaterDates = object : SelectableDates {
     override fun isSelectableDate(utcTimeMillis: Long): Boolean {
-        // Get start of tomorrow in UTC
-        val tomorrowStart = Calendar.getInstance(
-            TimeZone.getTimeZone("UTC")
-        ).apply {
-            add(Calendar.DAY_OF_YEAR, 1)
+        val today = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
             set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE,      0)
-            set(Calendar.SECOND,      0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
-        return utcTimeMillis >= tomorrowStart
+        }
+        return utcTimeMillis > today.timeInMillis
     }
 
     override fun isSelectableYear(year: Int): Boolean =
@@ -109,9 +102,7 @@ fun CreateCapsuleScreen(
                             Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
                         }
                     },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = Color.Transparent
-                    )
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
                 )
             },
             bottomBar = {
@@ -122,6 +113,7 @@ fun CreateCapsuleScreen(
                     onSave        = { viewModel.saveCapsule() },
                     isNextEnabled = when (uiState.currentStep) {
                         CreateStep.IDENTITY -> uiState.title.isNotBlank()
+                        CreateStep.FRIEND_NAME -> uiState.friendName.isNotBlank()
                         CreateStep.MOOD     -> uiState.mood != null
                         CreateStep.MESSAGE  -> uiState.message.isNotBlank() || uiState.voiceFile != null
                         else                -> true
@@ -151,7 +143,7 @@ fun CreateCapsuleScreen(
                             .verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(24.dp)
                     ) {
-                        StepIndicator(currentStep = step)
+                        StepIndicator(currentStep = step, steps = uiState.steps)
 
                         when (step) {
                             CreateStep.IDENTITY -> IdentityStep(
@@ -166,6 +158,11 @@ fun CreateCapsuleScreen(
                                     viewModel.onCoreMemoryChanged(it)
                                 },
                                 onCapsuleTypeChange = { viewModel.onCapsuleTypeChanged(it) },
+                                accentColor        = colors.primary
+                            )
+                            CreateStep.FRIEND_NAME -> FriendNameStep(
+                                friendName         = uiState.friendName,
+                                onFriendNameChange = { viewModel.onFriendNameChanged(it) },
                                 accentColor        = colors.primary
                             )
                             CreateStep.MOOD -> MoodStep(
@@ -208,8 +205,10 @@ fun CreateCapsuleScreen(
                             CreateStep.TIMING -> TimingStep(
                                 selectedDate  = uiState.unlockAt,
                                 capsuleType   = uiState.capsuleType,
+                                friendName    = uiState.friendName,
                                 onDateSelected = { viewModel.onUnlockDateChanged(it) },
-                                accentColor   = colors.primary
+                                accentColor   = colors.primary,
+                                viewModel     = viewModel
                             )
                             CreateStep.REVIEW -> ReviewStep(
                                 uiState     = uiState,
@@ -223,16 +222,16 @@ fun CreateCapsuleScreen(
     }
 }
 
-// ── Step indicator ────────────────────────────────────────────────────────────
 @Composable
-fun StepIndicator(currentStep: CreateStep) {
+fun StepIndicator(currentStep: CreateStep, steps: List<CreateStep>) {
     Row(
         modifier              = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        CreateStep.entries.forEach { step ->
+        val currentIndex = steps.indexOf(currentStep)
+        steps.forEachIndexed { index, step ->
             val isActive    = step == currentStep
-            val isCompleted = step.ordinal < currentStep.ordinal
+            val isCompleted = index < currentIndex
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -251,7 +250,6 @@ fun StepIndicator(currentStep: CreateStep) {
     }
 }
 
-// ── Step 1: Identity ──────────────────────────────────────────────────────────
 @Composable
 fun IdentityStep(
     title: String,
@@ -311,11 +309,7 @@ fun IdentityStep(
             Spacer(modifier = Modifier.width(12.dp))
             Column {
                 Text("Core Memory", color = Color.White, fontWeight = FontWeight.Bold)
-                Text(
-                    "Mark this as a significant life milestone",
-                    color    = Color.White.copy(alpha = 0.6f),
-                    fontSize = 12.sp
-                )
+                Text("Mark this as a significant life milestone", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
             }
             Spacer(modifier = Modifier.weight(1f))
             Switch(
@@ -327,7 +321,43 @@ fun IdentityStep(
     }
 }
 
-// ── Step 2: Mood ──────────────────────────────────────────────────────────────
+@Composable
+fun FriendNameStep(
+    friendName: String,
+    onFriendNameChange: (String) -> Unit,
+    accentColor: Color
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+        Text(
+            "Whose birthday is it?",
+            color      = Color.White,
+            fontSize   = 20.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        OutlinedTextField(
+            value         = friendName,
+            onValueChange = onFriendNameChange,
+            label         = { Text("Friend's Name") },
+            placeholder   = { Text("e.g. Sarah") },
+            modifier      = Modifier.fillMaxWidth(),
+            colors        = OutlinedTextFieldDefaults.colors(
+                focusedTextColor    = Color.White,
+                unfocusedTextColor  = Color.White,
+                focusedBorderColor  = accentColor,
+                unfocusedBorderColor = Color.White.copy(alpha = 0.3f)
+            ),
+            singleLine = true
+        )
+
+        Text(
+            "We'll use this to personalize the countdown and the unlock experience.",
+            color = Color.White.copy(alpha = 0.6f),
+            fontSize = 14.sp
+        )
+    }
+}
+
 @Composable
 fun MoodStep(
     selectedMood: Mood?,
@@ -365,15 +395,12 @@ fun MoodStep(
                 color      = Color.Red.copy(alpha = 0.8f),
                 fontSize   = 14.sp,
                 fontWeight = FontWeight.Medium,
-                modifier   = Modifier
-                    .padding(horizontal = 8.dp)
-                    .offset(x = shakeOffset.value.dp)
+                modifier   = Modifier.padding(horizontal = 8.dp).offset(x = shakeOffset.value.dp)
             )
         }
     }
 }
 
-// ── Step 3: Message ───────────────────────────────────────────────────────────
 @Composable
 fun MessageStep(
     message: String,
@@ -442,119 +469,74 @@ fun MessageStep(
     }
 }
 
-// ── Step 4: Timing router ─────────────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimingStep(
     selectedDate: Long,
     capsuleType: CapsuleType,
+    friendName: String,
     onDateSelected: (Long) -> Unit,
-    accentColor: Color
-) {
-    val viewModel: CreateCapsuleViewModel = hiltViewModel()
-
-    if (capsuleType == CapsuleType.BIRTHDAY_SELF) {
-        BirthdayTimingSection(
-            selectedDate   = selectedDate,
-            capsuleType    = capsuleType,
-            onYearSelected = { viewModel.updateUnlockYear(it) },
-            onTimeSelected = { h, m -> viewModel.updateUnlockTime(h, m) },
-            accentColor    = accentColor,
-            viewModel      = viewModel
-        )
-    } else {
-        // NORMAL and BIRTHDAY_OTHER both use the full date+time picker UI.
-        // BIRTHDAY_OTHER keeps its capsule type for the unlock experience.
-        OtherBirthdayTimingSection(
-            selectedDate   = selectedDate,
-            onDateSelected = onDateSelected,
-            accentColor    = accentColor,
-            isBirthdayMode = capsuleType == CapsuleType.BIRTHDAY_OTHER
-        )
-    }
-}
-
-// ── Birthday timing ───────────────────────────────────────────────────────────
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun BirthdayTimingSection(
-    selectedDate: Long,
-    capsuleType: CapsuleType,
-    onYearSelected: (Int) -> Unit,
-    onTimeSelected: (Int, Int) -> Unit,
     accentColor: Color,
     viewModel: CreateCapsuleViewModel
 ) {
-    val view     = LocalView.current
+    val view = LocalView.current
+
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+
     val calendar = remember(selectedDate) {
         Calendar.getInstance().apply { timeInMillis = selectedDate }
     }
-
-    // Compute whether this year's birthday has already passed.
-    // Uses the user's birth month+day from the ViewModel's stored
-    // date of birth to check against today.
-    val birthdayPassedThisYear: Boolean = remember {
-        val today    = Calendar.getInstance()
-        val birthCal = viewModel.getUserBirthCalendar()
-        if (birthCal == null) {
-            false
-        } else {
-            val thisYearBirthday = Calendar.getInstance().apply {
-                set(Calendar.YEAR,         today.get(Calendar.YEAR))
-                set(Calendar.MONTH,        birthCal.get(Calendar.MONTH))
-                set(Calendar.DAY_OF_MONTH, birthCal.get(Calendar.DAY_OF_MONTH))
-                set(Calendar.HOUR_OF_DAY,  0)
-                set(Calendar.MINUTE,       0)
-                set(Calendar.SECOND,       0)
-                set(Calendar.MILLISECOND,  0)
-            }
-            today.after(thisYearBirthday)
-        }
-    }
-
-    // The earliest year a user can select for their birthday capsule.
-    val minimumSelectableYear: Int = remember(birthdayPassedThisYear) {
-        val currentYear = Calendar.getInstance().get(Calendar.YEAR)
-        if (birthdayPassedThisYear) currentYear + 1 else currentYear
-    }
-
-    // If the currently selected unlock year is before the minimum
-    // (e.g. user had 2025 selected but birthday already passed),
-    // auto-advance it to the minimum year without user action.
-    LaunchedEffect(minimumSelectableYear) {
-        if (calendar.get(Calendar.YEAR) < minimumSelectableYear) {
-            onYearSelected(minimumSelectableYear)
-        }
-    }
-
-    var showTimePicker by remember { mutableStateOf(false) }
-    var showYearPicker by remember { mutableStateOf(false) }
+    val currentYear = Calendar.getInstance().get(Calendar.YEAR)
 
     val timePickerState = rememberTimePickerState(
         initialHour   = calendar.get(Calendar.HOUR_OF_DAY),
         initialMinute = calendar.get(Calendar.MINUTE)
     )
 
-    // ── YearPickerDialog hoisted to top level of this composable ──────────────
-    // Rendered OUTSIDE the scroll Column so it is never clipped by it
-    if (showYearPicker) {
-        YearPickerDialog(
-            currentYear    = calendar.get(Calendar.YEAR),
-            minimumYear    = minimumSelectableYear,
-            onYearSelected = {
-                onYearSelected(it)
-                showYearPicker = false
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = if (selectedDate > System.currentTimeMillis()) selectedDate else null,
+        selectableDates           = TomorrowOrLaterDates
+    )
+
+    if (showDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { onDateSelected(it) }
+                    showDatePicker = false
+                    showTimePicker = true
+                }) { Text("OK", color = accentColor) }
             },
-            onDismiss   = { showYearPicker = false },
-            accentColor = accentColor
-        )
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel", color = Color.White.copy(alpha = 0.6f)) }
+            },
+            colors = DatePickerDefaults.colors(containerColor = Color(0xFF1A1A1A))
+        ) {
+            DatePicker(
+                state = datePickerState,
+                colors = DatePickerDefaults.colors(
+                    containerColor = Color(0xFF1A1A1A),
+                    titleContentColor = Color.White,
+                    headlineContentColor = Color.White,
+                    selectedDayContainerColor = accentColor,
+                    selectedDayContentColor = Color.Black,
+                    todayContentColor = accentColor,
+                    todayDateBorderColor = accentColor
+                )
+            )
+        }
     }
 
     if (showTimePicker) {
         EternoTimePickerDialog(
             state       = timePickerState,
             onConfirm   = {
-                onTimeSelected(timePickerState.hour, timePickerState.minute)
+                val cal = Calendar.getInstance().apply { timeInMillis = selectedDate }
+                cal.set(Calendar.HOUR_OF_DAY, timePickerState.hour)
+                cal.set(Calendar.MINUTE,      timePickerState.minute)
+                onDateSelected(cal.timeInMillis)
                 showTimePicker = false
             },
             onDismiss   = { showTimePicker = false },
@@ -563,31 +545,37 @@ fun BirthdayTimingSection(
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                text = if (capsuleType == CapsuleType.BIRTHDAY_SELF)
-                    "Which birthday is this for?"
-                else
-                    "When should this gift unlock?",
-                color      = Color.White,
-                fontSize   = 20.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = if (birthdayPassedThisYear)
-                           "Your birthday has already passed this year — earliest unlock is $minimumSelectableYear."
-                       else
-                           "Select the year and exact time of unlock.",
-                color    = if (birthdayPassedThisYear)
-                               Color(0xFFFFAB40)   // warm amber — informational, not error
-                           else
-                               Color.White.copy(alpha = 0.6f),
-                fontSize = 14.sp
-            )
+        val headerText = when (capsuleType) {
+            CapsuleType.BIRTHDAY_SELF -> "When is your birthday?"
+            CapsuleType.BIRTHDAY_OTHER -> {
+                if (friendName.isNotBlank()) "When is $friendName's birthday?"
+                else "When is their birthday?"
+            }
+            else -> "When should this memory reveal itself?"
         }
 
-        // Year card
-        val ageAtUnlock = viewModel.getAgeAtUnlock()
+        Text(
+            text = headerText,
+            color      = Color.White,
+            fontSize   = 22.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        if (capsuleType != CapsuleType.NORMAL) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(Icons.Default.Celebration, contentDescription = null, tint = accentColor)
+                Text(
+                    text = "This capsule will unlock with a special celebration experience.",
+                    color = Color.White.copy(alpha = 0.6f),
+                    fontSize = 14.sp
+                )
+            }
+        }
+
+        // 1. Year selection card (Horizontal scroll)
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors   = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
@@ -595,119 +583,116 @@ fun BirthdayTimingSection(
             border   = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
         ) {
             Column(
-                modifier            = Modifier.padding(16.dp),
+                modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Row(
-                    modifier              = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment     = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
+                        Text("Unlock Year", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
                         Text(
-                            "Target Year",
-                            color    = Color.White.copy(alpha = 0.6f),
-                            fontSize = 12.sp
-                        )
-                        Text(
-                            "${calendar.get(Calendar.YEAR)}",
+                            text       = "${calendar.get(Calendar.YEAR)}",
                             color      = Color.White,
-                            fontSize   = 24.sp,
-                            fontWeight = FontWeight.Bold
+                            fontSize   = 28.sp,
+                            fontWeight = FontWeight.ExtraBold
                         )
                     }
-                    if (capsuleType == CapsuleType.BIRTHDAY_SELF && ageAtUnlock != null) {
-                        Surface(
-                            color = accentColor.copy(alpha = 0.2f),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text(
-                                "Your ${ageAtUnlock}${getOrdinal(ageAtUnlock)} Birthday",
-                                color      = accentColor,
-                                modifier   = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                fontSize   = 12.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+
+                    if (capsuleType == CapsuleType.BIRTHDAY_SELF) {
+                        viewModel.getAgeAtUnlock()?.let { age ->
+                            Surface(
+                                color = accentColor.copy(alpha = 0.2f),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(
+                                    "Your ${age}${getOrdinal(age)} Birthday",
+                                    color = accentColor,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }
 
-                // +N year quick buttons
-                Row(
-                    modifier              = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    listOf(1, 2, 5, 10).forEach { add ->
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(Color.White.copy(alpha = 0.1f))
-                                .clickable {
-                                    HapticUtil.performVirtualKey(view)
-                                    onYearSelected(minimumSelectableYear + (add - 1))
-                                }
-                                .padding(vertical = 8.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            val targetYear = minimumSelectableYear + (add - 1)
-                            Text(
-                                text = "$targetYear",
-                                color = Color.White,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-                }
-
-                OutlinedButton(
-                    onClick  = { showYearPicker = true },
-                    modifier = Modifier.fillMaxWidth(),
-                    border   = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
-                ) {
-                    Text("Change Year", color = Color.White)
-                }
-            }
-        }
-
-        // Time card
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { showTimePicker = true },
-            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
-            shape  = RoundedCornerShape(16.dp),
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
-        ) {
-            Row(
-                modifier              = Modifier.padding(16.dp),
-                verticalAlignment     = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Icon(Icons.Default.AccessTime, contentDescription = null, tint = accentColor)
-                Column {
-                    Text("Unlock Time", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
-                    Text(
-                        SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date(selectedDate)),
-                        color      = Color.White,
-                        fontSize   = 20.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                Spacer(modifier = Modifier.weight(1f))
-                Icon(
-                    Icons.Default.Edit,
-                    contentDescription = null,
-                    tint     = Color.White.copy(alpha = 0.3f),
-                    modifier = Modifier.size(16.dp)
+                InlineYearSelector(
+                    selectedYear   = calendar.get(Calendar.YEAR),
+                    minimumYear    = currentYear,
+                    onYearSelected = { newYear ->
+                        val cal = Calendar.getInstance().apply { timeInMillis = selectedDate }
+                        cal.set(Calendar.YEAR, newYear)
+                        onDateSelected(cal.timeInMillis)
+                    },
+                    accentColor    = accentColor
                 )
             }
         }
 
-        val fullDate = SimpleDateFormat(
-            "MMMM dd, yyyy 'at' hh:mm a", Locale.getDefault()
-        ).format(Date(selectedDate))
+        // 2. Calendar Opener (Pick Date & Time)
+        val dateStr = SimpleDateFormat("MMM dd, yyyy 'at' hh:mm a", Locale.getDefault()).format(Date(selectedDate))
+
+        OutlinedButton(
+            onClick  = {
+                HapticUtil.performVirtualKey(view)
+                showDatePicker = true
+            },
+            modifier = Modifier.fillMaxWidth(),
+            border   = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
+        ) {
+            Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
+                Text(text = "Pick Date & Time", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                Text(text = dateStr, color = accentColor, fontSize = 12.sp)
+            }
+        }
+
+        // 3. Presets (2x2 Grid)
+        val presets = listOf(
+            "1 Day"   to Calendar.DAY_OF_YEAR,
+            "1 Week"  to Calendar.WEEK_OF_YEAR,
+            "1 Month" to Calendar.MONTH,
+            "1 Year"  to Calendar.YEAR
+        )
+
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            presets.chunked(2).forEach { rowPresets ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    rowPresets.forEach { (label, field) ->
+                        val presetCal = Calendar.getInstance().apply {
+                            add(field, 1)
+                        }
+                        val timestamp = presetCal.timeInMillis
+                        val isSelected = Math.abs(selectedDate - timestamp) < 1000 * 60 * 60
+
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (isSelected) accentColor.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.05f))
+                                .border(1.dp, if (isSelected) accentColor else Color.Transparent, RoundedCornerShape(12.dp))
+                                .clickable {
+                                    HapticUtil.performVirtualKey(view)
+                                    onDateSelected(timestamp)
+                                }
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(label, color = Color.White, fontWeight = FontWeight.Medium)
+                        }
+                    }
+                }
+            }
+        }
+
+        val fullDate = SimpleDateFormat("MMMM dd, yyyy 'at' hh:mm a", Locale.getDefault()).format(Date(selectedDate))
         Text(
             text      = "Capsule will reveal on: $fullDate",
             color     = accentColor.copy(alpha = 0.8f),
@@ -718,7 +703,6 @@ fun BirthdayTimingSection(
     }
 }
 
-// ── Year picker dialog ────────────────────────────────────────────────────────
 @Composable
 fun YearPickerDialog(
     currentYear: Int,
@@ -741,12 +725,7 @@ fun YearPickerDialog(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable { onYearSelected(year) }
-                                .background(
-                                    if (year == currentYear)
-                                        accentColor.copy(alpha = 0.2f)
-                                    else
-                                        Color.Transparent
-                                )
+                                .background(if (year == currentYear) accentColor.copy(alpha = 0.2f) else Color.Transparent)
                                 .padding(16.dp),
                             color      = if (year == currentYear) accentColor else Color.White,
                             textAlign  = TextAlign.Center,
@@ -758,222 +737,12 @@ fun YearPickerDialog(
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = { onDismiss() }) {
-                Text("Cancel", color = Color.White.copy(alpha = 0.6f))
-            }
+            TextButton(onClick = { onDismiss() }) { Text("Cancel", color = Color.White.copy(alpha = 0.6f)) }
         },
         containerColor = Color(0xFF1A1A1A)
     )
 }
 
-// ── Drum Date Picker (Custom wheel picker matching requested style) ───────────
-@Composable
-fun DrumDatePickerDialog(
-    initialDate: Long,
-    onConfirm: (Long) -> Unit,
-    onDismiss: () -> Unit,
-    accentColor: Color
-) {
-    val calendar = remember(initialDate) { Calendar.getInstance().apply { timeInMillis = initialDate } }
-    
-    var year by remember { mutableIntStateOf(calendar.get(Calendar.YEAR)) }
-    var month by remember { mutableIntStateOf(calendar.get(Calendar.MONTH)) }
-    var day by remember { mutableIntStateOf(calendar.get(Calendar.DAY_OF_MONTH)) }
-
-    val currentYear = remember { Calendar.getInstance().get(Calendar.YEAR) }
-    val years = remember { (currentYear..currentYear + 50).map { it.toString() } }
-    val months = remember { listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec") }
-    
-    val daysInMonth = remember(year, month) {
-        val cal = Calendar.getInstance()
-        cal.set(year, month, 1)
-        cal.getActualMaximum(Calendar.DAY_OF_MONTH)
-    }
-    
-    LaunchedEffect(daysInMonth) {
-        if (day > daysInMonth) day = daysInMonth
-    }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(12.dp),
-            color = Color(0xFF1A1A1A),
-            modifier = Modifier.width(320.dp)
-        ) {
-            Column {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Text(
-                        text = "Set date",
-                        color = Color(0xFF00B0FF),
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Normal
-                    )
-                }
-                
-                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFF00B0FF)))
-                
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 32.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    DrumPickerColumn(
-                        items = (1..daysInMonth).map { it.toString().padStart(2, '0') },
-                        selectedIndex = (day - 1).coerceIn(0, daysInMonth - 1),
-                        onItemSelected = { day = it + 1 },
-                        accentColor = Color(0xFF00B0FF)
-                    )
-                    DrumPickerColumn(
-                        items = months,
-                        selectedIndex = month,
-                        onItemSelected = { month = it },
-                        accentColor = Color(0xFF00B0FF)
-                    )
-                    DrumPickerColumn(
-                        items = years,
-                        selectedIndex = years.indexOf(year.toString()).coerceAtLeast(0),
-                        onItemSelected = { year = years[it].toInt() },
-                        accentColor = Color(0xFF00B0FF)
-                    )
-                }
-                
-                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.1f)))
-                
-                Row(
-                    modifier = Modifier.fillMaxWidth().height(64.dp)
-                ) {
-                    TextButton(
-                        onClick = onDismiss, 
-                        modifier = Modifier.weight(1f).fillMaxHeight(),
-                        shape = RoundedCornerShape(0.dp)
-                    ) {
-                        Text("Cancel", color = Color.White, fontSize = 18.sp)
-                    }
-                    Box(modifier = Modifier.fillMaxHeight().width(1.dp).background(Color.White.copy(alpha = 0.1f)))
-                    TextButton(
-                        onClick = {
-                            val today = Calendar.getInstance()
-                            year = today.get(Calendar.YEAR)
-                            month = today.get(Calendar.MONTH)
-                            day = today.get(Calendar.DAY_OF_MONTH)
-                        }, 
-                        modifier = Modifier.weight(1f).fillMaxHeight(),
-                        shape = RoundedCornerShape(0.dp)
-                    ) {
-                        Text("Clear", color = Color.White, fontSize = 18.sp)
-                    }
-                    Box(modifier = Modifier.fillMaxHeight().width(1.dp).background(Color.White.copy(alpha = 0.1f)))
-                    TextButton(
-                        onClick = {
-                            val cal = Calendar.getInstance().apply { timeInMillis = initialDate }
-                            cal.set(Calendar.YEAR, year)
-                            cal.set(Calendar.MONTH, month)
-                            cal.set(Calendar.DAY_OF_MONTH, day)
-                            onConfirm(cal.timeInMillis)
-                        }, 
-                        modifier = Modifier.weight(1f).fillMaxHeight(),
-                        shape = RoundedCornerShape(0.dp)
-                    ) {
-                        Text("Set", color = Color.White, fontSize = 18.sp)
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun DrumPickerColumn(
-    items: List<String>,
-    selectedIndex: Int,
-    onItemSelected: (Int) -> Unit,
-    accentColor: Color
-) {
-    val pagerState = rememberPagerState(initialPage = selectedIndex, pageCount = { items.size })
-    val coroutineScope = rememberCoroutineScope()
-
-    // Sync pagerState changes to external state
-    LaunchedEffect(pagerState.currentPage) {
-        onItemSelected(pagerState.currentPage)
-    }
-
-    // Sync external selectedIndex changes to pagerState
-    LaunchedEffect(selectedIndex) {
-        if (pagerState.currentPage != selectedIndex) {
-            pagerState.scrollToPage(selectedIndex)
-        }
-    }
-
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        IconButton(
-            onClick = { 
-                if (pagerState.currentPage > 0) {
-                    coroutineScope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
-                }
-            },
-            modifier = Modifier.size(40.dp)
-        ) {
-            Icon(
-                Icons.Default.ArrowDropUp, 
-                contentDescription = null, 
-                tint = Color.Gray,
-                modifier = Modifier.size(32.dp)
-            )
-        }
-        
-        Box(
-            modifier = Modifier.height(140.dp).width(80.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Column {
-                Box(modifier = Modifier.width(65.dp).height(2.dp).background(accentColor))
-                Spacer(modifier = Modifier.height(48.dp))
-                Box(modifier = Modifier.width(65.dp).height(2.dp).background(accentColor))
-            }
-            
-            VerticalPager(
-                state = pagerState,
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(vertical = 46.dp)
-            ) { page ->
-                val isSelected = pagerState.currentPage == page
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = items[page],
-                        color = if (isSelected) Color.White else Color.White.copy(alpha = 0.3f),
-                        fontSize = if (isSelected) 26.sp else 20.sp,
-                        textAlign = TextAlign.Center,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                    )
-                }
-            }
-        }
-
-        IconButton(
-            onClick = { 
-                if (pagerState.currentPage < items.size - 1) {
-                    coroutineScope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
-                }
-            },
-            modifier = Modifier.size(40.dp)
-        ) {
-            Icon(
-                Icons.Default.ArrowDropDown, 
-                contentDescription = null, 
-                tint = Color.Gray,
-                modifier = Modifier.size(32.dp)
-            )
-        }
-    }
-}
-
-// ── Normal timing ─────────────────────────────────────────────────────────────
 @Composable
 fun InlineYearSelector(
     selectedYear: Int,
@@ -984,524 +753,27 @@ fun InlineYearSelector(
     val years = (minimumYear..minimumYear + 15).toList()
     val listState = rememberLazyListState()
 
-    // Auto-scroll to selected year on first composition
     LaunchedEffect(selectedYear) {
         val index = years.indexOf(selectedYear).coerceAtLeast(0)
         listState.animateScrollToItem(index)
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text      = "Select Year",
-            color     = Color.White.copy(alpha = 0.5f),
-            fontSize  = 11.sp,
-            fontWeight = FontWeight.Medium,
-            letterSpacing = 1.sp
-        )
-
-        LazyRow(
-            state                  = listState,
-            horizontalArrangement  = Arrangement.spacedBy(8.dp),
-            contentPadding         = PaddingValues(horizontal = 4.dp)
-        ) {
+        Text(text = "Select Year", color = Color.White.copy(alpha = 0.5f), fontSize = 11.sp, fontWeight = FontWeight.Medium, letterSpacing = 1.sp)
+        LazyRow(state = listState, horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(horizontal = 4.dp)) {
             items(years) { year ->
                 val isSelected = year == selectedYear
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(
-                            if (isSelected) accentColor
-                            else Color.White.copy(alpha = 0.08f)
-                        )
-                        .border(
-                            width = if (isSelected) 0.dp else 1.dp,
-                            color = Color.White.copy(alpha = 0.12f),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        .clickable { onYearSelected(year) }
-                        .padding(horizontal = 18.dp, vertical = 10.dp)
+                    modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(if (isSelected) accentColor else Color.White.copy(alpha = 0.08f)).border(width = if (isSelected) 0.dp else 1.dp, color = Color.White.copy(alpha = 0.12f), shape = RoundedCornerShape(12.dp)).clickable { onYearSelected(year) }.padding(horizontal = 18.dp, vertical = 10.dp)
                 ) {
-                    Text(
-                        text       = year.toString(),
-                        color      = if (isSelected) Color.Black else Color.White.copy(alpha = 0.7f),
-                        fontSize   = 14.sp,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                    )
+                    Text(text = year.toString(), color = if (isSelected) Color.Black else Color.White.copy(alpha = 0.7f), fontSize = 14.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
                 }
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun NormalTimingSection(
-    selectedDate: Long,
-    onDateSelected: (Long) -> Unit,
-    accentColor: Color
-) {
-    val view = LocalView.current
-
-    var showDatePicker by remember { mutableStateOf(false) }
-    var showTimePicker by remember { mutableStateOf(false) }
-
-    val timePickerState = rememberTimePickerState(
-        initialHour   = Calendar.getInstance().apply { timeInMillis = selectedDate }
-            .get(Calendar.HOUR_OF_DAY),
-        initialMinute = Calendar.getInstance().apply { timeInMillis = selectedDate }
-            .get(Calendar.MINUTE)
-    )
-
-    val tomorrowMillis = Calendar.getInstance().apply {
-        add(Calendar.DAY_OF_YEAR, 1)
-        set(Calendar.HOUR_OF_DAY, 0)
-        set(Calendar.MINUTE,      0)
-        set(Calendar.SECOND,      0)
-        set(Calendar.MILLISECOND, 0)
-    }.timeInMillis
-
-    val safeInitialDate = if (selectedDate <= System.currentTimeMillis())
-        tomorrowMillis
-    else
-        selectedDate
-
-    val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = safeInitialDate,
-        selectableDates           = TomorrowOrLaterDates
-    )
-
-    if (showDatePicker) {
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        datePickerState.selectedDateMillis?.let { onDateSelected(it) }
-                        showDatePicker = false
-                        showTimePicker = true
-                    }
-                ) {
-                    Text("OK", color = accentColor)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text("Cancel", color = Color.White.copy(alpha = 0.6f))
-                }
-            },
-            colors = DatePickerDefaults.colors(
-                containerColor = Color(0xFF1A1A1A)
-            )
-        ) {
-            DatePicker(
-                state = datePickerState,
-                colors = DatePickerDefaults.colors(
-                    containerColor = Color(0xFF1A1A1A),
-                    titleContentColor = Color.White,
-                    headlineContentColor = Color.White,
-                    selectedDayContainerColor = accentColor,
-                    selectedDayContentColor = Color.Black,
-                    todayContentColor = accentColor,
-                    todayDateBorderColor = accentColor
-                )
-            )
-        }
-    }
-
-    if (showTimePicker) {
-        EternoTimePickerDialog(
-            state       = timePickerState,
-            onConfirm   = {
-                val cal = Calendar.getInstance().apply { timeInMillis = selectedDate }
-                cal.set(Calendar.HOUR_OF_DAY, timePickerState.hour)
-                cal.set(Calendar.MINUTE,      timePickerState.minute)
-                onDateSelected(cal.timeInMillis)
-                showTimePicker = false
-            },
-            onDismiss   = { showTimePicker = false },
-            accentColor = accentColor
-        )
-    }
-
-    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        val calendar = remember(selectedDate) {
-            Calendar.getInstance().apply { timeInMillis = selectedDate }
-        }
-        val currentYear = Calendar.getInstance().get(Calendar.YEAR)
-
-        Text(
-            "When should this capsule reveal itself?",
-            color      = Color.White,
-            fontSize   = 20.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        // Year selection card
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors   = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
-            shape    = RoundedCornerShape(16.dp),
-            border   = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Column {
-                    Text(
-                        "Unlock Year",
-                        color    = Color.White.copy(alpha = 0.6f),
-                        fontSize = 12.sp
-                    )
-                    Text(
-                        text       = "${calendar.get(Calendar.YEAR)}",
-                        color      = Color.White,
-                        fontSize   = 28.sp,
-                        fontWeight = FontWeight.ExtraBold
-                    )
-                }
-
-                InlineYearSelector(
-                    selectedYear   = calendar.get(Calendar.YEAR),
-                    minimumYear    = currentYear,
-                    onYearSelected = { newYear ->
-                        val cal = Calendar.getInstance().apply { timeInMillis = selectedDate }
-                        cal.set(Calendar.YEAR, newYear)
-                        onDateSelected(cal.timeInMillis)
-                    },
-                    accentColor    = accentColor
-                )
-            }
-        }
-
-        val presets = listOf(
-            "1 Day"    to 1000L * 60 * 60 * 24,
-            "1 Week"   to 1000L * 60 * 60 * 24 * 7,
-            "1 Month"  to 1000L * 60 * 60 * 24 * 30,
-            "6 Months" to 1000L * 60 * 60 * 24 * 180,
-            "1 Year"   to 1000L * 60 * 60 * 24 * 365
-        )
-
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            presets.forEach { (label, offset) ->
-                val timestamp  = System.currentTimeMillis() + offset
-                val isSelected = Math.abs(selectedDate - timestamp) < 1000 * 60 * 60
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(
-                            if (isSelected) accentColor.copy(alpha = 0.3f)
-                            else Color.White.copy(alpha = 0.05f)
-                        )
-                        .border(
-                            1.dp,
-                            if (isSelected) accentColor else Color.Transparent,
-                            RoundedCornerShape(12.dp)
-                        )
-                        .clickable {
-                            HapticUtil.performVirtualKey(view)
-                            onDateSelected(timestamp)
-                        }
-                        .padding(16.dp)
-                ) {
-                    Text(label, color = Color.White, fontWeight = FontWeight.Medium)
-                }
-            }
-        }
-
-        val dateStr = SimpleDateFormat(
-            "MMM dd, yyyy 'at' hh:mm a", Locale.getDefault()
-        ).format(Date(selectedDate))
-
-        OutlinedButton(
-            onClick  = {
-                HapticUtil.performVirtualKey(view)
-                showDatePicker = true
-            },
-            modifier = Modifier.fillMaxWidth(),
-            border   = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
-        ) {
-            Icon(
-                Icons.Default.CalendarToday,
-                contentDescription = null,
-                modifier           = Modifier.size(18.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Column {
-                Text(
-                    text      = "Pick Date & Time",
-                    color     = Color.White,
-                    fontSize  = 14.sp,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text     = dateStr,
-                    color    = accentColor,
-                    fontSize = 12.sp
-                )
-            }
-        }
-
-        val fullDate = SimpleDateFormat(
-            "MMMM dd, yyyy 'at' hh:mm a", Locale.getDefault()
-        ).format(Date(selectedDate))
-        Text(
-            text      = "Capsule will reveal on: $fullDate",
-            color     = accentColor.copy(alpha = 0.8f),
-            fontSize  = 12.sp,
-            textAlign = TextAlign.Center,
-            modifier  = Modifier.fillMaxWidth()
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun OtherBirthdayTimingSection(
-    selectedDate: Long,
-    onDateSelected: (Long) -> Unit,
-    accentColor: Color,
-    isBirthdayMode: Boolean
-) {
-    val view = LocalView.current
-
-    var showDatePicker by remember { mutableStateOf(false) }
-    var showTimePicker by remember { mutableStateOf(false) }
-
-    val timePickerState = rememberTimePickerState(
-        initialHour   = Calendar.getInstance().apply { timeInMillis = selectedDate }
-            .get(Calendar.HOUR_OF_DAY),
-        initialMinute = Calendar.getInstance().apply { timeInMillis = selectedDate }
-            .get(Calendar.MINUTE)
-    )
-
-    val tomorrowMillis = Calendar.getInstance().apply {
-        add(Calendar.DAY_OF_YEAR, 1)
-        set(Calendar.HOUR_OF_DAY, 0)
-        set(Calendar.MINUTE,      0)
-        set(Calendar.SECOND,      0)
-        set(Calendar.MILLISECOND, 0)
-    }.timeInMillis
-
-    val safeInitialDate = if (selectedDate <= System.currentTimeMillis())
-        tomorrowMillis
-    else
-        selectedDate
-
-    val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = safeInitialDate,
-        selectableDates           = TomorrowOrLaterDates
-    )
-
-    if (showDatePicker) {
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        datePickerState.selectedDateMillis?.let { onDateSelected(it) }
-                        showDatePicker = false
-                        showTimePicker = true
-                    }
-                ) {
-                    Text("OK", color = accentColor)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text("Cancel", color = Color.White.copy(alpha = 0.6f))
-                }
-            },
-            colors = DatePickerDefaults.colors(
-                containerColor = Color(0xFF1A1A1A)
-            )
-        ) {
-            DatePicker(
-                state = datePickerState,
-                colors = DatePickerDefaults.colors(
-                    containerColor = Color(0xFF1A1A1A),
-                    titleContentColor = Color.White,
-                    headlineContentColor = Color.White,
-                    selectedDayContainerColor = accentColor,
-                    selectedDayContentColor = Color.Black,
-                    todayContentColor = accentColor,
-                    todayDateBorderColor = accentColor
-                )
-            )
-        }
-    }
-
-    if (showTimePicker) {
-        EternoTimePickerDialog(
-            state       = timePickerState,
-            onConfirm   = {
-                val cal = Calendar.getInstance().apply { timeInMillis = selectedDate }
-                cal.set(Calendar.HOUR_OF_DAY, timePickerState.hour)
-                cal.set(Calendar.MINUTE,      timePickerState.minute)
-                onDateSelected(cal.timeInMillis)
-                showTimePicker = false
-            },
-            onDismiss   = { showTimePicker = false },
-            accentColor = accentColor
-        )
-    }
-
-    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        val calendar = remember(selectedDate) {
-            Calendar.getInstance().apply { timeInMillis = selectedDate }
-        }
-        val currentYear = Calendar.getInstance().get(Calendar.YEAR)
-
-        Text(
-            text = if (isBirthdayMode) "When is their birthday?" else "When should this capsule reveal itself?",
-            color      = Color.White,
-            fontSize   = 20.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        if (isBirthdayMode) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    Icons.Default.Celebration,
-                    contentDescription = null,
-                    tint = accentColor
-                )
-                Text(
-                    text = "This capsule will unlock on their birthday with a special celebration experience.",
-                    color = Color.White.copy(alpha = 0.6f),
-                    fontSize = 13.sp
-                )
-            }
-        }
-
-        // Year selection card
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors   = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
-            shape    = RoundedCornerShape(16.dp),
-            border   = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Column {
-                    Text(
-                        "Unlock Year",
-                        color    = Color.White.copy(alpha = 0.6f),
-                        fontSize = 12.sp
-                    )
-                    Text(
-                        text       = "${calendar.get(Calendar.YEAR)}",
-                        color      = Color.White,
-                        fontSize   = 28.sp,
-                        fontWeight = FontWeight.ExtraBold
-                    )
-                }
-
-                InlineYearSelector(
-                    selectedYear   = calendar.get(Calendar.YEAR),
-                    minimumYear    = currentYear,
-                    onYearSelected = { newYear ->
-                        val cal = Calendar.getInstance().apply { timeInMillis = selectedDate }
-                        cal.set(Calendar.YEAR, newYear)
-                        onDateSelected(cal.timeInMillis)
-                    },
-                    accentColor    = accentColor
-                )
-            }
-        }
-
-        val presets = listOf(
-            "1 Day"    to 1000L * 60 * 60 * 24,
-            "1 Week"   to 1000L * 60 * 60 * 24 * 7,
-            "1 Month"  to 1000L * 60 * 60 * 24 * 30,
-            "6 Months" to 1000L * 60 * 60 * 24 * 180,
-            "1 Year"   to 1000L * 60 * 60 * 24 * 365
-        )
-
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            presets.forEach { (label, offset) ->
-                val timestamp  = System.currentTimeMillis() + offset
-                val isSelected = Math.abs(selectedDate - timestamp) < 1000 * 60 * 60
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(
-                            if (isSelected) accentColor.copy(alpha = 0.3f)
-                            else Color.White.copy(alpha = 0.05f)
-                        )
-                        .border(
-                            1.dp,
-                            if (isSelected) accentColor else Color.Transparent,
-                            RoundedCornerShape(12.dp)
-                        )
-                        .clickable {
-                            HapticUtil.performVirtualKey(view)
-                            onDateSelected(timestamp)
-                        }
-                        .padding(16.dp)
-                ) {
-                    Text(label, color = Color.White, fontWeight = FontWeight.Medium)
-                }
-            }
-        }
-
-        val dateStr = SimpleDateFormat(
-            "MMM dd, yyyy 'at' hh:mm a", Locale.getDefault()
-        ).format(Date(selectedDate))
-
-        OutlinedButton(
-            onClick  = {
-                HapticUtil.performVirtualKey(view)
-                showDatePicker = true
-            },
-            modifier = Modifier.fillMaxWidth(),
-            border   = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
-        ) {
-            Icon(
-                Icons.Default.CalendarToday,
-                contentDescription = null,
-                modifier           = Modifier.size(18.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Column {
-                Text(
-                    text      = "Pick Date & Time",
-                    color     = Color.White,
-                    fontSize  = 14.sp,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text     = dateStr,
-                    color    = accentColor,
-                    fontSize = 12.sp
-                )
-            }
-        }
-
-        val fullDate = SimpleDateFormat(
-            "MMMM dd, yyyy 'at' hh:mm a", Locale.getDefault()
-        ).format(Date(selectedDate))
-        Text(
-            text      = "Capsule will reveal on: $fullDate",
-            color     = accentColor.copy(alpha = 0.8f),
-            fontSize  = 12.sp,
-            textAlign = TextAlign.Center,
-            modifier  = Modifier.fillMaxWidth()
-        )
-    }
-}
-
-// ── Time picker dialog — renamed to avoid clash with M3's DatePickerDialog ────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EternoTimePickerDialog(
@@ -1512,16 +784,8 @@ fun EternoTimePickerDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text("Confirm", color = accentColor)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel", color = Color.White.copy(alpha = 0.6f))
-            }
-        },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("Confirm", color = accentColor) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel", color = Color.White.copy(alpha = 0.6f)) } },
         title = { Text("Select Time", color = Color.White) },
         text = {
             TimePicker(
@@ -1547,7 +811,6 @@ fun EternoTimePickerDialog(
     )
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 fun getOrdinal(n: Int): String {
     if (n in 11..13) return "th"
     return when (n % 10) {
@@ -1558,60 +821,34 @@ fun getOrdinal(n: Int): String {
     }
 }
 
-// ── Step 5: Review ────────────────────────────────────────────────────────────
 @Composable
 fun ReviewStep(
     uiState: CreateCapsuleUiState,
     accentColor: Color
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text(
-            "Review your Capsule",
-            color      = Color.White,
-            fontSize   = 20.sp,
-            fontWeight = FontWeight.Bold
-        )
+        Text("Review your Capsule", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         ReviewItem(label = "Title", value = uiState.title)
         ReviewItem(
             label = "Type",
             value = when (uiState.capsuleType) {
                 CapsuleType.NORMAL         -> "Regular Memory"
                 CapsuleType.BIRTHDAY_SELF  -> "My Birthday"
-                CapsuleType.BIRTHDAY_OTHER -> "Someone's Birthday"
+                CapsuleType.BIRTHDAY_OTHER -> if (uiState.friendName.isNotBlank()) "${uiState.friendName}'s Birthday" else "Friend's Birthday"
             },
             icon = when (uiState.capsuleType) {
                 CapsuleType.NORMAL -> Icons.Default.Description
                 else               -> Icons.Default.Cake
             }
         )
-        ReviewItem(
-            label = "Mood",
-            value = uiState.mood?.let {
-                it.name.lowercase().replaceFirstChar { c -> c.uppercase() }
-            } ?: "Not selected",
-            icon  = Icons.Default.Face
-        )
-        ReviewItem(
-            label = "Message",
-            value = if (uiState.message.isNotBlank()) "Written message included" else "No written message"
-        )
-        ReviewItem(
-            label = "Voice Note",
-            value = if (uiState.voiceFile != null) "Voice recording attached" else "No voice note"
-        )
-        ReviewItem(
-            label = "Unlocks On",
-            value = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-                .format(Date(uiState.unlockAt)),
-            icon  = Icons.Default.LockClock
-        )
-        if (uiState.isCoreMemory) {
-            ReviewItem(label = "Type", value = "Core Memory", icon = Icons.Default.AutoAwesome)
-        }
+        ReviewItem(label = "Mood", value = uiState.mood?.let { it.name.lowercase().replaceFirstChar { c -> c.uppercase() } } ?: "Not selected", icon = Icons.Default.Face)
+        ReviewItem(label = "Message", value = if (uiState.message.isNotBlank()) "Written message included" else "No written message")
+        ReviewItem(label = "Voice Note", value = if (uiState.voiceFile != null) "Voice recording attached" else "No voice note")
+        ReviewItem(label = "Unlocks On", value = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(uiState.unlockAt)), icon = Icons.Default.LockClock)
+        if (uiState.isCoreMemory) { ReviewItem(label = "Type", value = "Core Memory", icon = Icons.Default.AutoAwesome) }
     }
 }
 
-// ── Capsule type selector ─────────────────────────────────────────────────────
 @Composable
 fun CapsuleTypeSelector(
     selectedType: CapsuleType,
@@ -1620,31 +857,10 @@ fun CapsuleTypeSelector(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Capsule Type", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-        Row(
-            modifier              = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            CapsuleTypeOption(
-                isSelected     = selectedType == CapsuleType.NORMAL,
-                onClick        = { onTypeSelected(CapsuleType.NORMAL) },
-                accentColor    = accentColor,
-                icon           = Icons.Default.HistoryEdu,
-                label          = "Normal"
-            )
-            CapsuleTypeOption(
-                isSelected     = selectedType == CapsuleType.BIRTHDAY_SELF,
-                onClick        = { onTypeSelected(CapsuleType.BIRTHDAY_SELF) },
-                accentColor    = accentColor,
-                icon           = Icons.Default.Cake,
-                label          = "My Birthday"
-            )
-            CapsuleTypeOption(
-                isSelected     = selectedType == CapsuleType.BIRTHDAY_OTHER,
-                onClick        = { onTypeSelected(CapsuleType.BIRTHDAY_OTHER) },
-                accentColor    = accentColor,
-                icon           = Icons.Default.Celebration,
-                label          = "Friend's B'day"
-            )
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            CapsuleTypeOption(isSelected = selectedType == CapsuleType.NORMAL, onClick = { onTypeSelected(CapsuleType.NORMAL) }, accentColor = accentColor, icon = Icons.Default.HistoryEdu, label = "Normal")
+            CapsuleTypeOption(isSelected = selectedType == CapsuleType.BIRTHDAY_SELF, onClick = { onTypeSelected(CapsuleType.BIRTHDAY_SELF) }, accentColor = accentColor, icon = Icons.Default.Cake, label = "My Birthday")
+            CapsuleTypeOption(isSelected = selectedType == CapsuleType.BIRTHDAY_OTHER, onClick = { onTypeSelected(CapsuleType.BIRTHDAY_OTHER) }, accentColor = accentColor, icon = Icons.Default.Celebration, label = "Friend's B'day")
         }
     }
 }
@@ -1658,60 +874,21 @@ fun RowScope.CapsuleTypeOption(
     label: String
 ) {
     Column(
-        modifier = Modifier
-            .weight(1f)
-            .clip(RoundedCornerShape(12.dp))
-            .background(
-                if (isSelected) accentColor.copy(alpha = 0.2f)
-                else Color.White.copy(alpha = 0.05f)
-            )
-            .border(
-                1.dp,
-                if (isSelected) accentColor else Color.Transparent,
-                RoundedCornerShape(12.dp)
-            )
-            .clickable(onClick = onClick)
-            .padding(12.dp),
+        modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(if (isSelected) accentColor.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.05f)).border(1.dp, if (isSelected) accentColor else Color.Transparent, RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(
-            icon,
-            contentDescription = null,
-            tint = if (isSelected) accentColor else Color.White.copy(alpha = 0.5f)
-        )
+        Icon(icon, contentDescription = null, tint = if (isSelected) accentColor else Color.White.copy(alpha = 0.5f))
         Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            label,
-            color      = if (isSelected) Color.White else Color.White.copy(alpha = 0.5f),
-            fontSize   = 11.sp,
-            fontWeight = FontWeight.Medium,
-            textAlign  = TextAlign.Center
-        )
+        Text(label, color = if (isSelected) Color.White else Color.White.copy(alpha = 0.5f), fontSize = 11.sp, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
     }
 }
 
 @Composable
-fun ReviewItem(
-    label: String,
-    value: String,
-    icon: ImageVector? = null
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = 0.05f))
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+fun ReviewItem(label: String, value: String, icon: ImageVector? = null) {
+    Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = 0.05f)).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
         if (icon != null) {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint     = Color.White.copy(alpha = 0.6f),
-                modifier = Modifier.size(20.dp)
-            )
+            Icon(icon, contentDescription = null, tint = Color.White.copy(alpha = 0.6f), modifier = Modifier.size(20.dp))
             Spacer(modifier = Modifier.width(12.dp))
         }
         Column {
@@ -1721,7 +898,6 @@ fun ReviewItem(
     }
 }
 
-// ── Bottom nav bar ────────────────────────────────────────────────────────────
 @Composable
 fun CreationNavigationBar(
     currentStep: CreateStep,
@@ -1732,76 +908,26 @@ fun CreationNavigationBar(
     accentColor: Color
 ) {
     val view = LocalView.current
-    Surface(
-        color    = Color.Black.copy(alpha = 0.5f),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .padding(24.dp)
-                .navigationBarsPadding(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment     = Alignment.CenterVertically
-        ) {
+    Surface(color = Color.Black.copy(alpha = 0.5f), modifier = Modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.padding(24.dp).navigationBarsPadding(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             if (currentStep != CreateStep.IDENTITY) {
-                TextButton(onClick = {
-                    HapticUtil.performVirtualKey(view)
-                    onBack()
-                }) {
-                    Text("Back", color = Color.White.copy(alpha = 0.7f))
-                }
-            } else {
-                Spacer(modifier = Modifier.width(60.dp))
-            }
+                TextButton(onClick = { HapticUtil.performVirtualKey(view); onBack() }) { Text("Back", color = Color.White.copy(alpha = 0.7f)) }
+            } else { Spacer(modifier = Modifier.width(60.dp)) }
 
             if (currentStep == CreateStep.REVIEW) {
-                Box(
-                    modifier = Modifier
-                        .width(180.dp)
-                        .height(48.dp)
-                        .background(
-                            brush = Brush.horizontalGradient(
-                                listOf(accentColor, accentColor.copy(alpha = 0.7f))
-                            ),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        .clickable {
-                            HapticUtil.performConfirm(view)
-                            onSave()
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(modifier = Modifier.width(180.dp).height(48.dp).background(brush = Brush.horizontalGradient(listOf(accentColor, accentColor.copy(alpha = 0.7f))), shape = RoundedCornerShape(12.dp)).clickable { HapticUtil.performConfirm(view); onSave() }, contentAlignment = Alignment.Center) {
                     Text("Seal Memory", color = Color.Black, fontWeight = FontWeight.Bold)
                 }
             } else {
-                Button(
-                    onClick  = {
-                        HapticUtil.performVirtualKey(view)
-                        onNext()
-                    },
-                    enabled  = isNextEnabled,
-                    colors   = ButtonDefaults.buttonColors(
-                        containerColor         = accentColor,
-                        disabledContainerColor = accentColor.copy(alpha = 0.3f)
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text(
-                        "Continue",
-                        color = if (isNextEnabled) Color.Black else Color.White.copy(alpha = 0.5f)
-                    )
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null,
-                        modifier           = Modifier.padding(start = 8.dp).size(18.dp)
-                    )
+                Button(onClick = { HapticUtil.performVirtualKey(view); onNext() }, enabled = isNextEnabled, colors = ButtonDefaults.buttonColors(containerColor = accentColor, disabledContainerColor = accentColor.copy(alpha = 0.3f)), shape = RoundedCornerShape(12.dp)) {
+                    Text("Continue", color = if (isNextEnabled) Color.Black else Color.White.copy(alpha = 0.5f))
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.padding(start = 8.dp).size(18.dp))
                 }
             }
         }
     }
 }
 
-// ── Voice recording section ───────────────────────────────────────────────────
 @Composable
 fun VoiceRecordingSection(
     isRecording: Boolean,
@@ -1816,73 +942,26 @@ fun VoiceRecordingSection(
     onDeleteRecording: () -> Unit,
     accentColor: Color
 ) {
-    val permissionsLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) onStartRecording()
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color.White.copy(alpha = 0.05f), MaterialTheme.shapes.medium)
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
+    val permissionsLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted -> if (isGranted) onStartRecording() }
+    Column(modifier = Modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.05f), MaterialTheme.shapes.medium).padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         if (isRecording || hasRecording) {
-            Box(
-                modifier         = Modifier.fillMaxWidth().height(60.dp).padding(vertical = 8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                WaveformVisualizer(
-                    waveform = waveform,
-                    color    = if (isPaused) Color.Gray else accentColor
-                )
+            Box(modifier = Modifier.fillMaxWidth().height(60.dp).padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+                WaveformVisualizer(waveform = waveform, color = if (isPaused) Color.Gray else accentColor)
             }
-
             val minutes = (duration / 1000) / 60
             val seconds = (duration / 1000) % 60
-            Text(
-                text  = "%d:%02d".format(minutes, seconds) + if (isPaused) " (Paused)" else "",
-                color = if (isPaused) Color.Gray else Color.White,
-                fontSize = 12.sp
-            )
-
-            Row(
-                modifier              = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment     = Alignment.CenterVertically
-            ) {
+            Text(text = "%d:%02d".format(minutes, seconds) + if (isPaused) " (Paused)" else "", color = if (isPaused) Color.Gray else Color.White, fontSize = 12.sp)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                 if (isRecording) {
-                    IconButton(onClick = { if (isPaused) onResumeRecording() else onPauseRecording() }) {
-                        Icon(
-                            if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                            contentDescription = if (isPaused) "Resume" else "Pause",
-                            tint               = Color.White
-                        )
-                    }
+                    IconButton(onClick = { if (isPaused) onResumeRecording() else onPauseRecording() }) { Icon(if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause, contentDescription = if (isPaused) "Resume" else "Pause", tint = Color.White) }
                     Spacer(modifier = Modifier.width(16.dp))
-                    IconButton(onClick = onStopRecording) {
-                        Icon(Icons.Default.Stop, contentDescription = "Stop", tint = Color.Red)
-                    }
+                    IconButton(onClick = onStopRecording) { Icon(Icons.Default.Stop, contentDescription = "Stop", tint = Color.Red) }
                 } else {
-                    IconButton(onClick = onDeleteRecording) {
-                        Icon(
-                            Icons.Default.Delete,
-                            contentDescription = "Delete",
-                            tint               = Color.White.copy(alpha = 0.6f)
-                        )
-                    }
+                    IconButton(onClick = onDeleteRecording) { Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White.copy(alpha = 0.6f)) }
                 }
             }
         } else {
-            Button(
-                onClick         = { permissionsLauncher.launch(android.Manifest.permission.RECORD_AUDIO) },
-                colors          = ButtonDefaults.buttonColors(containerColor = accentColor.copy(alpha = 0.2f)),
-                shape           = CircleShape,
-                modifier        = Modifier.size(56.dp),
-                contentPadding  = PaddingValues(0.dp)
-            ) {
+            Button(onClick = { permissionsLauncher.launch(android.Manifest.permission.RECORD_AUDIO) }, colors = ButtonDefaults.buttonColors(containerColor = accentColor.copy(alpha = 0.2f)), shape = CircleShape, modifier = Modifier.size(56.dp), contentPadding = PaddingValues(0.dp)) {
                 Icon(Icons.Default.Mic, contentDescription = "Record", tint = accentColor)
             }
             Spacer(modifier = Modifier.height(8.dp))
@@ -1891,29 +970,20 @@ fun VoiceRecordingSection(
     }
 }
 
-// ── Waveform canvas ───────────────────────────────────────────────────────────
 @Composable
 fun WaveformVisualizer(waveform: List<Float>, color: Color) {
     Canvas(modifier = Modifier.fillMaxSize()) {
-        val width    = size.width
-        val height   = size.height
-        val centerY  = height / 2
+        val width = size.width
+        val height = size.height
+        val centerY = height / 2
         val barWidth = 4.dp.toPx()
-        val gap      = 2.dp.toPx()
-        val maxBars  = (width / (barWidth + gap)).toInt()
-
+        val gap = 2.dp.toPx()
+        val maxBars = (width / (barWidth + gap)).toInt()
         val displayWaveform = if (waveform.size > maxBars) waveform.takeLast(maxBars) else waveform
-
         displayWaveform.forEachIndexed { index, amplitude ->
-            val x         = width - (displayWaveform.size - index) * (barWidth + gap)
+            val x = width - (displayWaveform.size - index) * (barWidth + gap)
             val barHeight = (amplitude * height).coerceAtLeast(4.dp.toPx())
-            drawLine(
-                color       = color,
-                start       = Offset(x, centerY - barHeight / 2),
-                end         = Offset(x, centerY + barHeight / 2),
-                strokeWidth = barWidth,
-                cap         = StrokeCap.Round
-            )
+            drawLine(color = color, start = Offset(x, centerY - barHeight / 2), end = Offset(x, centerY + barHeight / 2), strokeWidth = barWidth, cap = StrokeCap.Round)
         }
     }
 }

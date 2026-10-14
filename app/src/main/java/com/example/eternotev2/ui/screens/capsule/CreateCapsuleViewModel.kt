@@ -25,11 +25,12 @@ import java.util.Calendar
 import javax.inject.Inject
 
 enum class CreateStep {
-    IDENTITY, MOOD, MESSAGE, TIMING, REVIEW
+    IDENTITY, FRIEND_NAME, MOOD, MESSAGE, TIMING, REVIEW
 }
 
 data class CreateCapsuleUiState(
     val currentStep: CreateStep = CreateStep.IDENTITY,
+    val steps: List<CreateStep> = listOf(CreateStep.IDENTITY, CreateStep.MOOD, CreateStep.MESSAGE, CreateStep.TIMING, CreateStep.REVIEW),
     val title: String = "",
     val tags: List<String> = emptyList(),
     val isCoreMemory: Boolean = false,
@@ -46,7 +47,8 @@ data class CreateCapsuleUiState(
     val isPaused: Boolean = false,
     val recordingDuration: Long = 0L,
     val waveform: List<Float> = emptyList(),
-    val voiceFile: File? = null
+    val voiceFile: File? = null,
+    val friendName: String = ""
 )
 
 @HiltViewModel
@@ -88,26 +90,31 @@ class CreateCapsuleViewModel @Inject constructor(
             return
         }
 
-        val next = when (current) {
-            CreateStep.IDENTITY -> CreateStep.MOOD
-            CreateStep.MOOD -> CreateStep.MESSAGE
-            CreateStep.MESSAGE -> CreateStep.TIMING
-            CreateStep.TIMING -> CreateStep.REVIEW
-            CreateStep.REVIEW -> CreateStep.REVIEW
+        val steps = _uiState.value.steps
+        val currentIndex = steps.indexOf(current)
+        if (currentIndex < steps.size - 1) {
+            val next = steps[currentIndex + 1]
+            _uiState.update { it.copy(currentStep = next, showMoodError = false) }
         }
-        _uiState.update { it.copy(currentStep = next, showMoodError = false) }
     }
 
     fun previousStep() {
         val current = _uiState.value.currentStep
-        val prev = when (current) {
-            CreateStep.IDENTITY -> CreateStep.IDENTITY
-            CreateStep.MOOD -> CreateStep.IDENTITY
-            CreateStep.MESSAGE -> CreateStep.MOOD
-            CreateStep.TIMING -> CreateStep.MESSAGE
-            CreateStep.REVIEW -> CreateStep.TIMING
+        val steps = _uiState.value.steps
+        val currentIndex = steps.indexOf(current)
+        if (currentIndex > 0) {
+            val prev = steps[currentIndex - 1]
+            _uiState.update { it.copy(currentStep = prev) }
         }
-        _uiState.update { it.copy(currentStep = prev) }
+    }
+
+    private fun updateSteps(type: CapsuleType) {
+        val steps = mutableListOf(CreateStep.IDENTITY)
+        if (type == CapsuleType.BIRTHDAY_OTHER) {
+            steps.add(CreateStep.FRIEND_NAME)
+        }
+        steps.addAll(listOf(CreateStep.MOOD, CreateStep.MESSAGE, CreateStep.TIMING, CreateStep.REVIEW))
+        _uiState.update { it.copy(steps = steps) }
     }
 
     fun onTitleChanged(title: String) = _uiState.update { it.copy(title = title) }
@@ -115,16 +122,14 @@ class CreateCapsuleViewModel @Inject constructor(
     fun onCoreMemoryChanged(isCore: Boolean) = _uiState.update { it.copy(isCoreMemory = isCore) }
     fun onMessageChanged(message: String) = _uiState.update { it.copy(message = message) }
     fun onUnlockMessageChanged(msg: String) = _uiState.update { it.copy(unlockMessage = msg) }
+    fun onFriendNameChanged(name: String) = _uiState.update { it.copy(friendName = name) }
     fun onMoodChanged(mood: Mood) = _uiState.update { it.copy(mood = mood, showMoodError = false) }
     fun onCapsuleTypeChanged(type: CapsuleType) {
         _uiState.update { it.copy(capsuleType = type) }
+        updateSteps(type)
         when (type) {
             CapsuleType.BIRTHDAY_SELF -> calculateNextBirthdayUnlock()
             CapsuleType.BIRTHDAY_OTHER -> {
-                // If it's for someone else, we default to next year same date as today 
-                // but usually the user would pick a date. 
-                // However, the user wants "Year + Time" only.
-                // We'll default to today's Month/Day and let them pick Year.
                 val cal = Calendar.getInstance()
                 cal.add(Calendar.YEAR, 1)
                 _uiState.update { it.copy(unlockAt = cal.timeInMillis) }
@@ -200,7 +205,6 @@ class CreateCapsuleViewModel @Inject constructor(
                 delay(100)
                 if (!_uiState.value.isPaused) {
                     val amplitude = voiceRecorder.getAmplitude()
-                    // Normalize amplitude for visualization (0..1)
                     val normalized = (amplitude / 32767f).coerceIn(0f, 1f)
                     _uiState.update { 
                         it.copy(
@@ -226,10 +230,6 @@ class CreateCapsuleViewModel @Inject constructor(
         _uiState.update { it.copy(unlockAt = cal.timeInMillis) }
     }
 
-    /**
-     * Returns a Calendar set to the user's date of birth,
-     * or null if birth date is not yet set.
-     */
     fun getUserBirthCalendar(): Calendar? {
         val birthMillis = _uiState.value.userBirthDate
         if (birthMillis == null || birthMillis == 0L) return null
@@ -242,7 +242,6 @@ class CreateCapsuleViewModel @Inject constructor(
         val unlockCal = Calendar.getInstance().apply { timeInMillis = _uiState.value.unlockAt }
         
         var age = unlockCal.get(Calendar.YEAR) - birthCal.get(Calendar.YEAR)
-        // If unlock is before birthday in the target year, subtract 1
         if (unlockCal.get(Calendar.MONTH) < birthCal.get(Calendar.MONTH) ||
             (unlockCal.get(Calendar.MONTH) == birthCal.get(Calendar.MONTH) && 
              unlockCal.get(Calendar.DAY_OF_MONTH) < birthCal.get(Calendar.DAY_OF_MONTH))) {
@@ -262,10 +261,16 @@ class CreateCapsuleViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true) }
             
+            val finalTitle = if (currentState.capsuleType == CapsuleType.BIRTHDAY_OTHER && currentState.friendName.isNotBlank()) {
+                "${currentState.friendName}'s Birthday: ${currentState.title}"
+            } else {
+                currentState.title
+            }
+
             val newCapsule = Capsule(
                 id = 0,
                 userId = sessionManager.getCurrentUserId(),
-                title = currentState.title,
+                title = finalTitle,
                 message = currentState.message,
                 mood = mood,
                 createdAt = System.currentTimeMillis(),
@@ -283,18 +288,15 @@ class CreateCapsuleViewModel @Inject constructor(
             
             val capsuleId = capsuleRepository.createCapsule(newCapsule)
 
-            // Schedule notification
             val workRequestId = workerScheduler.scheduleUnlockNotification(
                 capsuleId = capsuleId,
                 unlockAtMillis = currentState.unlockAt
             )
             
-            // Update capsule with work request ID
             if (workRequestId.isNotEmpty()) {
                 capsuleRepository.setWorkRequestId(capsuleId, workRequestId)
             }
 
-            // Save voice note if exists
             currentState.voiceFile?.let { file ->
                 val permanentFile = File(context.filesDir, "voice_notes/${file.name}")
                 permanentFile.parentFile?.mkdirs()
