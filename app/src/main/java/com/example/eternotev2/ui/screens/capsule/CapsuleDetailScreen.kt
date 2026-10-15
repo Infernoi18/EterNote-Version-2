@@ -350,19 +350,19 @@ fun CapsuleDetailScreen(
                     if (!capsule.isUnlocked) {
                         val isNearOpening = (capsule.unlockAt - System.currentTimeMillis()) < 1000 * 60 * 60 * 24 // 24 hours
                         val isReady = System.currentTimeMillis() >= capsule.unlockAt
-                        
+
                         if (isReady || isNearOpening) {
                             val showArrow by remember {
                                 derivedStateOf { scrollState.value < (scrollState.maxValue - 150) }
                             }
-                            
+
                             AnimatedVisibility(
                                 visible = showArrow,
                                 enter = fadeIn() + scaleIn(),
                                 exit = fadeOut() + scaleOut(),
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
-                                    .padding(bottom = 100.dp)
+                                    .padding(bottom = 24.dp)
                             ) {
                                 IconButton(
                                     onClick = {
@@ -370,17 +370,13 @@ fun CapsuleDetailScreen(
                                             scrollState.animateScrollTo(scrollState.maxValue)
                                         }
                                     },
-                                    modifier = Modifier
-                                        .size(48.dp)
-                                        .clip(CircleShape)
-                                        .background(moodColors.primary.copy(alpha = 0.2f))
-                                        .border(1.dp, moodColors.primary.copy(alpha = 0.5f), CircleShape)
+                                    modifier = Modifier.size(56.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.KeyboardArrowDown,
+                                        imageVector = Icons.Default.KeyboardDoubleArrowDown,
                                         contentDescription = "Scroll to bottom",
                                         tint = moodColors.primary,
-                                        modifier = Modifier.size(32.dp)
+                                        modifier = Modifier.size(40.dp)
                                     )
                                 }
                             }

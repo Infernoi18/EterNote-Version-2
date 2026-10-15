@@ -33,7 +33,7 @@ fun GlassCard(
     content: @Composable ColumnScope.() -> Unit
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "GlassShine")
-    val shineOffset by infiniteTransition.animateFloat(
+    val shineOffset = infiniteTransition.animateFloat(
         initialValue = -1f,
         targetValue = 2f,
         animationSpec = infiniteRepeatable(
@@ -98,8 +98,8 @@ fun GlassCard(
                     0.5f to Color.White.copy(alpha = 0.05f),
                     0.55f to Color.Transparent,
                     1f to Color.Transparent,
-                    start = androidx.compose.ui.geometry.Offset(size.width * (shineOffset - 0.5f), 0f),
-                    end = androidx.compose.ui.geometry.Offset(size.width * shineOffset, size.height)
+                    start = androidx.compose.ui.geometry.Offset(size.width * (shineOffset.value - 0.5f), 0f),
+                    end = androidx.compose.ui.geometry.Offset(size.width * shineOffset.value, size.height)
                 )
             )
         }

@@ -20,7 +20,7 @@ fun ParticleField(
 ) {
     val ambientAlpha = LocalAmbientAlpha.current
     val infiniteTransition = rememberInfiniteTransition(label = "ParticleField")
-    
+
     val particles = remember {
         List(particleCount) {
             ParticleData(
@@ -52,11 +52,11 @@ fun ParticleField(
                 particles.forEach { particle ->
                     val currentY = (particle.y - p * particle.speed) % 1f
                     val adjustedY = if (currentY < 0) currentY + 1f else currentY
-                    
+
                     val alphaFade = (0.5f + 0.5f * kotlin.math.sin(p * 2 * Math.PI.toFloat() + particle.baseAlpha * 10f)).coerceIn(0f, 1f)
-                    
+
                     val alpha = alphaFade * particle.baseAlpha
-                    
+
                     // Core dot
                     drawCircle(
                         color = color.copy(alpha = alpha * ambientAlpha),
@@ -91,7 +91,7 @@ fun StarField(
     val stars = remember {
         List(starCount) {
             Triple(
-                Offset(Random.nextFloat(), Random.nextFloat()), 
+                Offset(Random.nextFloat(), Random.nextFloat()),
                 Random.nextFloat() * 1f + 0.5f,
                 Random.nextFloat() * 0.3f + 0.1f
             )
@@ -121,7 +121,7 @@ fun GlowOrb(
 ) {
     val ambientAlpha = LocalAmbientAlpha.current
     val infiniteTransition = rememberInfiniteTransition(label = "GlowOrb")
-    
+
     val pulse = infiniteTransition.animateFloat(
         initialValue = 0.95f,
         targetValue = 1.05f,

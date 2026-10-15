@@ -29,7 +29,7 @@ fun AmbientBackground(
     val ambientAlpha = LocalAmbientAlpha.current
     val infiniteTransition = rememberInfiniteTransition(label = "BackgroundFlow")
     
-    val phase by infiniteTransition.animateFloat(
+    val phase = infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
@@ -63,7 +63,7 @@ fun AmbientBackground(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .graphicsLayer {
-                    val angle = phase * 2 * Math.PI
+                    val angle = phase.value * 2 * Math.PI
                     translationX = (Math.cos(angle) * 50).dp.toPx()
                     translationY = (Math.sin(angle) * 50).dp.toPx()
                 }
@@ -77,7 +77,7 @@ fun AmbientBackground(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .graphicsLayer {
-                    val angle = (phase + 0.5f) * 2 * Math.PI
+                    val angle = (phase.value + 0.5f) * 2 * Math.PI
                     translationX = (Math.sin(angle) * 80).dp.toPx()
                     translationY = (Math.cos(angle) * 80).dp.toPx()
                 }
@@ -97,10 +97,10 @@ fun AmbientBackground(
                 )
             )
         }
-        
+
         // Glossy Mesh/Sweep Overlay
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val sweepProgress = (phase * 2) % 1f
+            val sweepProgress = (phase.value * 2) % 1f
             drawRect(
                 brush = Brush.linearGradient(
                     0f to Color.Transparent,
