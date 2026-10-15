@@ -46,11 +46,12 @@ fun ProfileScreen(
     }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(DeepVoid)
+        modifier = Modifier.fillMaxSize()
     ) {
-        StarField()
+        com.example.eternotev2.ui.components.ambient.AmbientBackground(
+            primaryColor = CosmicViolet,
+            secondaryColor = NebulaPink
+        )
 
         Column(
             modifier = Modifier
@@ -224,7 +225,7 @@ fun ProfileScreen(
                                     color = Color.White
                                 )
                                 Spacer(modifier = Modifier.weight(1f))
-                                Icon(Icons.Default.Edit, contentDescription = null, tint = Color.White.copy(alpha = 0.3f), modifier = Modifier.size(14.dp))
+                                Icon(Icons.Default.Edit, contentDescription = null, tint = CosmicViolet, modifier = Modifier.size(14.dp))
                             }
                         }
                     }

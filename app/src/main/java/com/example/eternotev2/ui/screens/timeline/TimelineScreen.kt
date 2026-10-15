@@ -73,8 +73,7 @@ fun TimelineScreen(
     val view = LocalView.current
 
     Box(modifier = Modifier.fillMaxSize()) {
-        AmbientBackground(
-            modifier = Modifier.fillMaxSize(),
+        com.example.eternotev2.ui.components.ambient.AmbientBackground(
             primaryColor = AuroraCyan,
             secondaryColor = CosmicViolet
         )

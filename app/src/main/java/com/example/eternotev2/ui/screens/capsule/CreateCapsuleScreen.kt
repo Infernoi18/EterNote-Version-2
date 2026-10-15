@@ -41,7 +41,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.foundation.BorderStroke
 import com.example.eternotev2.ui.components.mood.MoodSelector
-import com.example.eternotev2.ui.components.ambient.StarField
+import com.example.eternotev2.ui.components.ambient.AmbientBackground
 import com.example.eternotev2.data.model.CapsuleType
 import com.example.eternotev2.util.HapticUtil
 import com.example.eternotev2.ui.theme.DeepVoid
@@ -89,8 +89,11 @@ fun CreateCapsuleScreen(
         if (uiState.saveSuccess) onCapsuleCreated()
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(DeepVoid)) {
-        StarField()
+    Box(modifier = Modifier.fillMaxSize()) {
+        AmbientBackground(
+            primaryColor = colors.primary,
+            secondaryColor = colors.secondary.copy(alpha = 0.4f)
+        )
 
         Scaffold(
             containerColor = Color.Transparent,

@@ -66,7 +66,6 @@ fun SettingsScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         AmbientBackground(
-            modifier = Modifier.fillMaxSize(),
             primaryColor = CosmicViolet,
             secondaryColor = AuroraCyan
         )

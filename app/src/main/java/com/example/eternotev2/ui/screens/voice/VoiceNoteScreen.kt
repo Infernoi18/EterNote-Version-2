@@ -69,9 +69,8 @@ fun VoiceNoteScreen(
         if (uiState.isSaved) onBack()
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(DeepVoid)) {
+    Box(modifier = Modifier.fillMaxSize()) {
         AmbientBackground(
-            modifier = Modifier.fillMaxSize(),
             primaryColor = if (uiState.isLocked) Color.Gray else baseColor,
             secondaryColor = if (uiState.isLocked) Color.DarkGray else gradientPartner
         )

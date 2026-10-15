@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.eternotev2.ui.components.ambient.StarField
+import com.example.eternotev2.ui.components.common.GlassCard
 import com.example.eternotev2.ui.theme.*
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
@@ -42,11 +43,12 @@ fun AuthScreen(
     }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(DeepVoid)
+        modifier = Modifier.fillMaxSize()
     ) {
-        StarField()
+        com.example.eternotev2.ui.components.ambient.AmbientBackground(
+            primaryColor = CosmicViolet,
+            secondaryColor = NebulaPink
+        )
 
         Column(
             modifier = Modifier
@@ -71,14 +73,12 @@ fun AuthScreen(
 
             Spacer(modifier = Modifier.height(48.dp))
 
-            Surface(
+            GlassCard(
                 modifier = Modifier.fillMaxWidth(),
-                color = Color.White.copy(alpha = 0.05f),
-                shape = RoundedCornerShape(24.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+                cornerRadius = 24.dp
             ) {
                 Column(
-                    modifier = Modifier.padding(24.dp),
+                    modifier = Modifier.padding(8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {

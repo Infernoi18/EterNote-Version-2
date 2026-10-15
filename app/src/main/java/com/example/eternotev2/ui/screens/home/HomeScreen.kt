@@ -58,17 +58,14 @@ fun HomeScreen(
     val view = LocalView.current
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF0A0A0A)) // Deep space background
+        modifier = Modifier.fillMaxSize()
     ) {
         // Ambient Background
-        StarField()
-        GlowOrb(
-            color = animatedColors.glow,
-            modifier = Modifier.align(Alignment.TopEnd).offset(x = 100.dp, y = (-100).dp)
+        com.example.eternotev2.ui.components.ambient.AmbientBackground(
+            primaryColor = animatedColors.glow,
+            secondaryColor = moodColors.secondary.copy(alpha = 0.3f),
+            showParticles = true
         )
-        ParticleField(colors = moodColors)
 
         Scaffold(
             containerColor = Color.Transparent,
@@ -443,21 +440,18 @@ fun CapsuleCard(
     val view = LocalView.current
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
     
-    Box(
+    GlassCard(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(Color.White.copy(alpha = 0.05f))
             .clickable {
                 HapticUtil.performLongPress(view)
                 onClick()
             }
-            .border(0.5.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(20.dp))
-            .padding(16.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.fillMaxWidth()
         ) {
             // Icon or Symbol
             Box(

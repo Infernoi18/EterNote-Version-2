@@ -65,10 +65,8 @@ fun CoreMemoryScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         AmbientBackground(
-            modifier = Modifier.fillMaxSize(),
             primaryColor = StarGold,
-            secondaryColor = CosmicViolet,
-            tertiaryColor = MoodGratefulPrimary
+            secondaryColor = CosmicViolet
         )
 
         Column(

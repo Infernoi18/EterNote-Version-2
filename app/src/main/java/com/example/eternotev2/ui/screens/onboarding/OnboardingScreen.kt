@@ -54,17 +54,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.eternotev2.ui.theme.AuroraCyan
-import com.example.eternotev2.ui.theme.AuroraCyanGlow
-import com.example.eternotev2.ui.theme.CosmicViolet
-import com.example.eternotev2.ui.theme.CosmicVioletGlow
-import com.example.eternotev2.ui.theme.DeepVoid
-import com.example.eternotev2.ui.theme.MoodHappyPrimary
-import com.example.eternotev2.ui.theme.NebulaPink
-import com.example.eternotev2.ui.theme.NebulaPinkGlow
-import com.example.eternotev2.ui.theme.TextPrimary
-import com.example.eternotev2.ui.theme.TextSecondary
-import com.example.eternotev2.ui.theme.TextTertiary
+import com.example.eternotev2.ui.components.ambient.AmbientBackground
+import com.example.eternotev2.ui.theme.*
 
 // ── Onboarding page data ──────────────────────────────────────────────────────
 data class OnboardingPage(
@@ -129,29 +120,20 @@ fun OnboardingScreen(
             }
     ) {
 
-        // ── Ambient background gradient ───────────────────────────────────────
+        // ── Ambient background ───────────────────────────────────────────────
         AnimatedContent(
             targetState = uiState.currentPage,
             transitionSpec = {
-                fadeIn(tween(600)) togetherWith fadeOut(tween(600))
+                fadeIn(tween(800)) togetherWith fadeOut(tween(800))
             },
             label = "bgGradient"
         ) { page ->
             val pageData = onboardingPages[page]
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            pageData.glowColor.copy(alpha = 0.25f),
-                            Color.Transparent
-                        ),
-                        center = Offset(size.width / 2f, size.height * 0.35f),
-                        radius = size.width * 0.8f
-                    ),
-                    radius = size.width * 0.8f,
-                    center = Offset(size.width / 2f, size.height * 0.35f)
-                )
-            }
+            AmbientBackground(
+                primaryColor = pageData.accentColor,
+                secondaryColor = pageData.gradientColors.last(),
+                showParticles = true
+            )
         }
 
         Column(
