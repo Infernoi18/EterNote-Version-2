@@ -1,5 +1,6 @@
 package com.example.eternotev2.ui.screens.capsule
 
+import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -8,6 +9,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -23,17 +25,17 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.eternotev2.data.model.CapsuleType
-import com.example.eternotev2.ui.components.ambient.StarField
+import com.example.eternotev2.ui.components.ambient.AmbientBackground
 import com.example.eternotev2.ui.components.common.GlassCard
-import com.example.eternotev2.ui.theme.DeepVoid
-import com.example.eternotev2.ui.theme.moodColors
-import androidx.compose.ui.platform.LocalView
+import com.example.eternotev2.ui.theme.*
 import com.example.eternotev2.util.HapticUtil
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -49,6 +51,9 @@ fun CapsuleDetailScreen(
     val uiState by viewModel.uiState.collectAsState()
     val view = LocalView.current
     var showDeleteDialog by remember { mutableStateOf(false) }
+    
+    val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
     
     // Real-time countdown for locked capsules
     var countdownText by remember(uiState.capsule) { 
@@ -70,14 +75,19 @@ fun CapsuleDetailScreen(
         viewModel.loadCapsule(capsuleId)
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(DeepVoid)) {
-        StarField()
+    Box(modifier = Modifier.fillMaxSize()) {
+        val capsule = uiState.capsule
+        val colors = if (capsule != null) moodColors(capsule.mood) else null
+        
+        AmbientBackground(
+            primaryColor = colors?.primary ?: CosmicViolet,
+            secondaryColor = colors?.secondary?.copy(alpha = 0.4f) ?: NebulaPink
+        )
         
         if (uiState.isLoading) {
             CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = Color.White)
-        } else if (uiState.capsule != null) {
-            val capsule = uiState.capsule!!
-            val colors = moodColors(capsule.mood)
+        } else if (capsule != null) {
+            val moodColors = moodColors(capsule.mood)
 
             if (showDeleteDialog) {
                 AlertDialog(
@@ -142,198 +152,240 @@ fun CapsuleDetailScreen(
                     )
                 }
             ) { padding ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding)
-                        .padding(horizontal = 24.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(24.dp)
-                ) {
-                    // Header Card
-                    GlassCard(modifier = Modifier.fillMaxWidth()) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = capsule.mood.emoji,
-                                fontSize = 48.sp
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = capsule.title,
-                                color = Color.White,
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Created on ${formatDate(capsule.createdAt)}",
-                                color = Color.White.copy(alpha = 0.6f),
-                                fontSize = 14.sp
-                            )
+                Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 24.dp)
+                            .verticalScroll(scrollState),
+                        verticalArrangement = Arrangement.spacedBy(24.dp)
+                    ) {
+                        // Header Card
+                        GlassCard(modifier = Modifier.fillMaxWidth()) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = capsule.mood.emoji,
+                                    fontSize = 48.sp
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = capsule.title,
+                                    color = Color.White,
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Created on ${formatDate(capsule.createdAt)}",
+                                    color = Color.White.copy(alpha = 0.6f),
+                                    fontSize = 14.sp
+                                )
+                            }
                         }
-                    }
 
-                    // Status Section
-                    InfoRow(
-                        icon = if (capsule.isUnlocked) Icons.Default.LockOpen else Icons.Default.Lock,
-                        label = "Status",
-                        value = if (capsule.isUnlocked) {
-                            "Unlocked: ${formatDate(capsule.unlockAt)}"
-                        } else if (System.currentTimeMillis() >= capsule.unlockAt) {
-                            "Ready to unlock"
-                        } else {
-                            "Locked • $countdownText"
-                        },
-                        accentColor = colors.primary
-                    )
+                        // Status Section
+                        InfoRow(
+                            icon = if (capsule.isUnlocked) Icons.Default.LockOpen else Icons.Default.Lock,
+                            label = "Status",
+                            value = if (capsule.isUnlocked) {
+                                "Unlocked: ${formatDate(capsule.unlockAt)}"
+                            } else if (System.currentTimeMillis() >= capsule.unlockAt) {
+                                "Ready to unlock"
+                            } else {
+                                "Locked • $countdownText"
+                            },
+                            accentColor = moodColors.primary
+                        )
 
-                    InfoRow(
-                        icon = when(capsule.capsuleType) {
-                            CapsuleType.BIRTHDAY_SELF -> Icons.Default.Cake
-                            CapsuleType.BIRTHDAY_OTHER -> Icons.Default.Celebration
-                            else -> Icons.Default.AutoAwesome
-                        },
-                        label = "Type",
-                        value = when(capsule.capsuleType) {
-                            CapsuleType.BIRTHDAY_SELF -> "My Birthday Capsule"
-                            CapsuleType.BIRTHDAY_OTHER -> "Birthday Gift"
-                            else -> if (capsule.isCoreMemory) "Core Memory" else "Regular Memory"
-                        },
-                        accentColor = colors.primary
-                    )
+                        InfoRow(
+                            icon = when(capsule.capsuleType) {
+                                CapsuleType.BIRTHDAY_SELF -> Icons.Default.Cake
+                                CapsuleType.BIRTHDAY_OTHER -> Icons.Default.Celebration
+                                else -> Icons.Default.AutoAwesome
+                            },
+                            label = "Type",
+                            value = when(capsule.capsuleType) {
+                                CapsuleType.BIRTHDAY_SELF -> "My Birthday Capsule"
+                                CapsuleType.BIRTHDAY_OTHER -> "Birthday Gift"
+                                else -> if (capsule.isCoreMemory) "Core Memory" else "Regular Memory"
+                            },
+                            accentColor = moodColors.primary
+                        )
 
-                    // Content Preview
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("Memory Content", color = Color.White.copy(alpha = 0.7f), fontSize = 14.sp)
-                        
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(
-                                    if (capsule.isUnlocked && (capsule.capsuleType == CapsuleType.BIRTHDAY_SELF || capsule.capsuleType == CapsuleType.BIRTHDAY_OTHER)) {
-                                        Brush.verticalGradient(
-                                            listOf(
-                                                colors.primary.copy(alpha = 0.15f),
-                                                colors.secondary.copy(alpha = 0.05f)
+                        // Content Preview
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text("Memory Content", color = Color.White.copy(alpha = 0.7f), fontSize = 14.sp)
+                            
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(
+                                        if (capsule.isUnlocked && (capsule.capsuleType == CapsuleType.BIRTHDAY_SELF || capsule.capsuleType == CapsuleType.BIRTHDAY_OTHER)) {
+                                            Brush.verticalGradient(
+                                                listOf(
+                                                    moodColors.primary.copy(alpha = 0.15f),
+                                                    moodColors.secondary.copy(alpha = 0.05f)
+                                                )
                                             )
-                                        )
-                                    } else {
-                                        Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.05f), Color.White.copy(alpha = 0.05f)))
+                                        } else {
+                                            Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.05f), Color.White.copy(alpha = 0.05f)))
+                                        }
+                                    )
+                                    .border(
+                                        1.dp, 
+                                        if (capsule.isUnlocked && (capsule.capsuleType == CapsuleType.BIRTHDAY_SELF || capsule.capsuleType == CapsuleType.BIRTHDAY_OTHER)) moodColors.primary.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.1f), 
+                                        RoundedCornerShape(16.dp)
+                                    )
+                                    .padding(20.dp)
+                            ) {
+                                if (capsule.isUnlocked) {
+                                    Column {
+                                        if (capsule.capsuleType == CapsuleType.BIRTHDAY_SELF || capsule.capsuleType == CapsuleType.BIRTHDAY_OTHER) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(Icons.Default.Cake, contentDescription = null, tint = moodColors.primary, modifier = Modifier.size(20.dp))
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text(
+                                                    "Happy Birthday!",
+                                                    color = moodColors.primary,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 18.sp
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.height(12.dp))
+                                        }
+                                        Text(capsule.message, color = Color.White, lineHeight = 24.sp)
                                     }
-                                )
-                                .border(
-                                    1.dp, 
-                                    if (capsule.isUnlocked && (capsule.capsuleType == CapsuleType.BIRTHDAY_SELF || capsule.capsuleType == CapsuleType.BIRTHDAY_OTHER)) colors.primary.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.1f), 
-                                    RoundedCornerShape(16.dp)
-                                )
-                                .padding(20.dp)
-                        ) {
-                            if (capsule.isUnlocked) {
-                                Column {
-                                    if (capsule.capsuleType == CapsuleType.BIRTHDAY_SELF || capsule.capsuleType == CapsuleType.BIRTHDAY_OTHER) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(Icons.Default.Cake, contentDescription = null, tint = colors.primary, modifier = Modifier.size(20.dp))
-                                            Spacer(modifier = Modifier.width(8.dp))
+                                } else {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                                        Icon(Icons.Default.Lock, contentDescription = null, tint = moodColors.primary, modifier = Modifier.size(32.dp))
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Text(
+                                            "This memory is sealed.",
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        capsule.unlockMessage?.let {
+                                            Spacer(modifier = Modifier.height(8.dp))
                                             Text(
-                                                "Happy Birthday!",
-                                                color = colors.primary,
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 18.sp
+                                                it,
+                                                color = Color.White.copy(alpha = 0.6f),
+                                                fontSize = 14.sp,
+                                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
                                             )
                                         }
-                                        Spacer(modifier = Modifier.height(12.dp))
-                                    }
-                                    Text(capsule.message, color = Color.White, lineHeight = 24.sp)
-                                }
-                            } else {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                                    Icon(Icons.Default.Lock, contentDescription = null, tint = colors.primary, modifier = Modifier.size(32.dp))
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    Text(
-                                        "This memory is sealed.",
-                                        color = Color.White,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    capsule.unlockMessage?.let {
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text(
-                                            it,
-                                            color = Color.White.copy(alpha = 0.6f),
-                                            fontSize = 14.sp,
-                                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                                        )
                                     }
                                 }
                             }
                         }
-                    }
 
-                    // Voice Note Section
-                    if (capsule.hasVoiceNote) {
-                        VoiceNotePreview(
-                            isUnlocked = capsule.isUnlocked,
-                            isPlaying = uiState.isPlaying,
-                            waveformData = uiState.voiceNotes.firstOrNull()?.waveformData ?: emptyList(),
-                            onPlayClick = {
-                                if (capsule.isUnlocked) {
-                                    HapticUtil.performVirtualKey(view)
-                                    viewModel.playVoiceNote()
-                                }
-                            },
-                            accentColor = colors.primary
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.weight(1f))
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    if (!capsule.isUnlocked) {
-                        val isUnlockable = System.currentTimeMillis() >= capsule.unlockAt
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(56.dp)
-                                .background(
-                                    brush = if (isUnlockable) {
-                                        Brush.horizontalGradient(listOf(colors.primary, colors.secondary))
-                                    } else {
-                                        Brush.horizontalGradient(
-                                            listOf(
-                                                Color.Gray.copy(alpha = 0.3f),
-                                                Color.Gray.copy(alpha = 0.5f)
-                                            )
-                                        )
-                                    },
-                                    shape = RoundedCornerShape(16.dp)
-                                )
-                                .clickable(enabled = isUnlockable) {
-                                    HapticUtil.performConfirm(view)
-                                    onUnlockClick()
+                        // Voice Note Section
+                        if (capsule.hasVoiceNote) {
+                            VoiceNotePreview(
+                                isUnlocked = capsule.isUnlocked,
+                                isPlaying = uiState.isPlaying,
+                                waveformData = uiState.voiceNotes.firstOrNull()?.waveformData ?: emptyList(),
+                                onPlayClick = {
+                                    if (capsule.isUnlocked) {
+                                        HapticUtil.performVirtualKey(view)
+                                        viewModel.playVoiceNote()
+                                    }
                                 },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = if (isUnlockable) "Unlock Now" else "Unlocking in $countdownText",
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
+                                accentColor = moodColors.primary
                             )
                         }
-                    } else {
-                        OutlinedButton(
-                            onClick = {
-                                HapticUtil.performVirtualKey(view)
-                                onBack()
-                            },
-                            modifier = Modifier.fillMaxWidth().height(56.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
-                        ) {
-                            Text("Back to Timeline", color = Color.White)
+
+                        Spacer(modifier = Modifier.weight(1f))
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        if (!capsule.isUnlocked) {
+                            val isUnlockable = System.currentTimeMillis() >= capsule.unlockAt
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp)
+                                    .background(
+                                        brush = if (isUnlockable) {
+                                            Brush.horizontalGradient(listOf(moodColors.primary, moodColors.secondary))
+                                        } else {
+                                            Brush.horizontalGradient(
+                                                listOf(
+                                                    Color.Gray.copy(alpha = 0.3f),
+                                                    Color.Gray.copy(alpha = 0.5f)
+                                                )
+                                            )
+                                        },
+                                        shape = RoundedCornerShape(16.dp)
+                                    )
+                                    .clickable(enabled = isUnlockable) {
+                                        HapticUtil.performConfirm(view)
+                                        onUnlockClick()
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = if (isUnlockable) "Unlock Now" else "Unlocking in $countdownText",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        } else {
+                            OutlinedButton(
+                                onClick = {
+                                    HapticUtil.performVirtualKey(view)
+                                    onBack()
+                                },
+                                modifier = Modifier.fillMaxWidth().height(56.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
+                            ) {
+                                Text("Back to Timeline", color = Color.White)
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(32.dp))
+                    }
+
+                    // Scroll to bottom arrow for ready/near-ready capsules
+                    if (!capsule.isUnlocked) {
+                        val isNearOpening = (capsule.unlockAt - System.currentTimeMillis()) < 1000 * 60 * 60 * 24 // 24 hours
+                        val isReady = System.currentTimeMillis() >= capsule.unlockAt
+                        
+                        if (isReady || isNearOpening) {
+                            val showArrow by remember {
+                                derivedStateOf { scrollState.value < (scrollState.maxValue - 150) }
+                            }
+                            
+                            AnimatedVisibility(
+                                visible = showArrow,
+                                enter = fadeIn() + scaleIn(),
+                                exit = fadeOut() + scaleOut(),
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .padding(bottom = 100.dp)
+                            ) {
+                                IconButton(
+                                    onClick = {
+                                        coroutineScope.launch {
+                                            scrollState.animateScrollTo(scrollState.maxValue)
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .clip(CircleShape)
+                                        .background(moodColors.primary.copy(alpha = 0.2f))
+                                        .border(1.dp, moodColors.primary.copy(alpha = 0.5f), CircleShape)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.KeyboardArrowDown,
+                                        contentDescription = "Scroll to bottom",
+                                        tint = moodColors.primary,
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                }
+                            }
                         }
                     }
-                    
-                    Spacer(modifier = Modifier.height(32.dp))
                 }
             }
         }
