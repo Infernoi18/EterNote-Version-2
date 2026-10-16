@@ -47,19 +47,14 @@ class CapsuleUnlockViewModel @Inject constructor(
             delay(1500)
             _uiState.update { it.copy(currentPhase = UnlockPhase.UNSEALING) }
             
-            // UNSEALING Phase (The "Lock Break" animation)
-            delay(3000)
-            
-            // Actually mark as unlocked in DB
+            // Actually mark as unlocked in DB when we start unsealing
             _uiState.value.capsule?.let {
                 repository.unlockCapsule(it.id)
             }
-            
-            _uiState.update { it.copy(currentPhase = UnlockPhase.REVEALING) }
-            
-            // REVEALING Phase (Fade in content)
-            delay(2000)
-            _uiState.update { it.copy(currentPhase = UnlockPhase.READING) }
         }
+    }
+
+    fun onAnimationFinished() {
+        _uiState.update { it.copy(currentPhase = UnlockPhase.READING) }
     }
 }
