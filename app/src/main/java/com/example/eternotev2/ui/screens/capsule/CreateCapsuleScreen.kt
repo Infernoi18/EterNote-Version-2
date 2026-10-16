@@ -490,7 +490,26 @@ fun TimingStep(
     val calendar = remember(selectedDate) {
         Calendar.getInstance().apply { timeInMillis = selectedDate }
     }
+    
     val currentYear = Calendar.getInstance().get(Calendar.YEAR)
+    val effectiveMinimumYear = remember(capsuleType) {
+        if (capsuleType == CapsuleType.BIRTHDAY_SELF) {
+            val now = Calendar.getInstance()
+            viewModel.getUserBirthCalendar()?.let { birthCal ->
+                val thisYearBirthday = Calendar.getInstance().apply {
+                    set(Calendar.MONTH, birthCal.get(Calendar.MONTH))
+                    set(Calendar.DAY_OF_MONTH, birthCal.get(Calendar.DAY_OF_MONTH))
+                }
+                if (thisYearBirthday.timeInMillis < now.timeInMillis) {
+                    currentYear + 1
+                } else {
+                    currentYear
+                }
+            } ?: currentYear
+        } else {
+            currentYear
+        }
+    }
 
     val timePickerState = rememberTimePickerState(
         initialHour   = calendar.get(Calendar.HOUR_OF_DAY),
@@ -578,7 +597,7 @@ fun TimingStep(
             }
         }
 
-        // 1. Year selection card (Horizontal scroll)
+        // 1. Year selection card (Horizontal scroll) - Shown for all types
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors   = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
@@ -624,7 +643,7 @@ fun TimingStep(
 
                 InlineYearSelector(
                     selectedYear   = calendar.get(Calendar.YEAR),
-                    minimumYear    = currentYear,
+                    minimumYear    = effectiveMinimumYear,
                     onYearSelected = { newYear ->
                         val cal = Calendar.getInstance().apply { timeInMillis = selectedDate }
                         cal.set(Calendar.YEAR, newYear)
@@ -635,60 +654,63 @@ fun TimingStep(
             }
         }
 
-        // 2. Calendar Opener (Pick Date & Time)
-        val dateStr = SimpleDateFormat("MMM dd, yyyy 'at' hh:mm a", Locale.getDefault()).format(Date(selectedDate))
+        // Only show Date/Time picker and Presets for non-BIRTHDAY_SELF types
+        if (capsuleType != CapsuleType.BIRTHDAY_SELF) {
+            // 2. Calendar Opener (Pick Date & Time)
+            val dateStr = SimpleDateFormat("MMM dd, yyyy 'at' hh:mm a", Locale.getDefault()).format(Date(selectedDate))
 
-        OutlinedButton(
-            onClick  = {
-                HapticUtil.performVirtualKey(view)
-                showDatePicker = true
-            },
-            modifier = Modifier.fillMaxWidth(),
-            border   = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
-        ) {
-            Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(modifier = Modifier.width(8.dp))
-            Column {
-                Text(text = "Pick Date & Time", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                Text(text = dateStr, color = accentColor, fontSize = 12.sp)
+            OutlinedButton(
+                onClick  = {
+                    HapticUtil.performVirtualKey(view)
+                    showDatePicker = true
+                },
+                modifier = Modifier.fillMaxWidth(),
+                border   = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
+            ) {
+                Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Column {
+                    Text(text = "Pick Date & Time", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Text(text = dateStr, color = accentColor, fontSize = 12.sp)
+                }
             }
-        }
 
-        // 3. Presets (2x2 Grid)
-        val presets = listOf(
-            "1 Day"   to Calendar.DAY_OF_YEAR,
-            "1 Week"  to Calendar.WEEK_OF_YEAR,
-            "1 Month" to Calendar.MONTH,
-            "1 Year"  to Calendar.YEAR
-        )
+            // 3. Presets (2x2 Grid)
+            val presets = listOf(
+                "1 Day"   to Calendar.DAY_OF_YEAR,
+                "1 Week"  to Calendar.WEEK_OF_YEAR,
+                "1 Month" to Calendar.MONTH,
+                "1 Year"  to Calendar.YEAR
+            )
 
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            presets.chunked(2).forEach { rowPresets ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    rowPresets.forEach { (label, field) ->
-                        val presetCal = Calendar.getInstance().apply {
-                            add(field, 1)
-                        }
-                        val timestamp = presetCal.timeInMillis
-                        val isSelected = Math.abs(selectedDate - timestamp) < 1000 * 60 * 60
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                presets.chunked(2).forEach { rowPresets ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        rowPresets.forEach { (label, field) ->
+                            val presetCal = Calendar.getInstance().apply {
+                                add(field, 1)
+                            }
+                            val timestamp = presetCal.timeInMillis
+                            val isSelected = Math.abs(selectedDate - timestamp) < 1000 * 60 * 60
 
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(if (isSelected) accentColor.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.05f))
-                                .border(1.dp, if (isSelected) accentColor else Color.Transparent, RoundedCornerShape(12.dp))
-                                .clickable {
-                                    HapticUtil.performVirtualKey(view)
-                                    onDateSelected(timestamp)
-                                }
-                                .padding(16.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(label, color = Color.White, fontWeight = FontWeight.Medium)
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(if (isSelected) accentColor.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.05f))
+                                    .border(1.dp, if (isSelected) accentColor else Color.Transparent, RoundedCornerShape(12.dp))
+                                    .clickable {
+                                        HapticUtil.performVirtualKey(view)
+                                        onDateSelected(timestamp)
+                                    }
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(label, color = Color.White, fontWeight = FontWeight.Medium)
+                            }
                         }
                     }
                 }
